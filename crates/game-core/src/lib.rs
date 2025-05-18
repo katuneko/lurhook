@@ -446,4 +446,16 @@ mod tests {
         assert_eq!(loaded.player.hp, game.player.hp);
         assert_eq!(loaded.time_of_day, game.time_of_day);
     }
+
+    #[test]
+    fn camera_clamps_to_bounds() {
+        let mut game = LurhookGame::default();
+        game.player.pos = common::Point::new(0, 0);
+        assert_eq!(game.camera(), (0, 0));
+
+        game.player.pos = common::Point::new(game.map.width as i32, game.map.height as i32);
+        let cam = game.camera();
+        assert!(cam.0 <= game.map.width as i32 - super::VIEW_WIDTH);
+        assert!(cam.1 <= game.map.height as i32 - super::VIEW_HEIGHT);
+    }
 }

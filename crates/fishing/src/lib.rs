@@ -98,4 +98,21 @@ mod tests {
         let mut meter = TensionMeter { duration: 1, ..TensionMeter::new(1) };
         assert_eq!(meter.update(false), MeterState::Success);
     }
+
+    #[test]
+    fn repeated_reel_zeroes_tension() {
+        let mut meter = TensionMeter::new(5);
+        meter.tension = 20;
+        for _ in 0..3 {
+            meter.update(true);
+        }
+        assert_eq!(meter.tension, 0);
+    }
+
+    #[test]
+    fn default_values() {
+        let meter = TensionMeter::default();
+        assert_eq!(meter.strength, 5);
+        assert_eq!(meter.max_tension, 100);
+    }
 }
