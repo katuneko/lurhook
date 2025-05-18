@@ -6,6 +6,7 @@ use bracket_lib::prelude::*;
 
 use common::GameResult;
 use ecology::{spawn_fish, Fish};
+use ecology::update_fish;
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext};
@@ -96,6 +97,7 @@ impl Default for LurhookGame {
 impl GameState for LurhookGame {
     fn tick(&mut self, ctx: &mut BTerm) {
         self.handle_input(ctx);
+        update_fish(&self.map, &mut self.fishes).expect("fish update");
         ctx.cls();
         self.draw_map(ctx);
         self.draw_fish(ctx);
