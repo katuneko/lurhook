@@ -317,7 +317,11 @@ pub fn run() -> BError {
     println!("Welcome to Lurhook! (engine stub)");
     init_subsystems()?;
 
-    let context = BTermBuilder::simple(80, 25)?
+    let context = BTermBuilder::new()
+        .with_resource_path(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resources"))
+        .with_font("unicode_16x16.png", 16, 16)
+        .with_simple_console(80, 25, "unicode_16x16.png")
+        .with_tile_dimensions(16, 16)
         .with_title("Lurhook")
         .build()?;
     let gs = LurhookGame::new(0).expect("init game");
@@ -445,5 +449,14 @@ mod tests {
         assert_eq!(loaded.player.pos, game.player.pos);
         assert_eq!(loaded.player.hp, game.player.hp);
         assert_eq!(loaded.time_of_day, game.time_of_day);
+    }
+
+    #[test]
+    fn font_resource_exists() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../resources/unicode_16x16.png"
+        );
+        assert!(std::path::Path::new(path).exists());
     }
 }
