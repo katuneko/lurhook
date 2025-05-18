@@ -4,7 +4,7 @@ mod types;
 
 use bracket_lib::prelude::*;
 
-use common::{GameResult, GameError};
+use common::{GameError, GameResult};
 use ecology::update_fish;
 use ecology::{spawn_fish, Fish};
 use fishing::{init as fishing_init, TensionMeter};
@@ -13,6 +13,7 @@ use ui::{init as ui_init, UIContext, UILayout};
 
 const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
+const LINE_DAMAGE: i32 = 10;
 use data;
 
 /// Current game mode.
@@ -22,7 +23,6 @@ enum GameMode {
 }
 
 pub use types::Player;
-
 
 /// Basic game state implementing [`GameState`].
 pub struct LurhookGame {
@@ -124,6 +124,10 @@ impl LurhookGame {
     }
 
     fn cast(&mut self) {
+        if self.player.line <= 0 {
+            self.ui.add_log("Your line is broken!").ok();
+            return;
+        }
         if self.fishes.is_empty() {
             self.ui.add_log("No fish around.").ok();
             return;
@@ -173,6 +177,12 @@ impl LurhookGame {
                     }
                     MeterState::Broken => {
                         self.ui.add_log("Line snapped!").ok();
+                        if self.player.line > 0 {
+                            self.player.line = (self.player.line - LINE_DAMAGE).max(0);
+                            if self.player.line == 0 {
+                                self.ui.add_log("Your line is ruined.").ok();
+                            }
+                        }
                         self.mode = GameMode::Exploring;
                         self.ui.set_layout(UILayout::Standard);
                     }
@@ -208,11 +218,7 @@ impl LurhookGame {
                 && fish.position.y >= cam_y
                 && fish.position.y < cam_y + VIEW_HEIGHT
             {
-                ctx.print(
-                    fish.position.x - cam_x,
-                    fish.position.y - cam_y,
-                    'f',
-                );
+                ctx.print(fish.position.x - cam_x, fish.position.y - cam_y, 'f');
             }
         }
     }
@@ -457,5 +463,28 @@ mod tests {
         let cam = game.camera();
         assert!(cam.0 <= game.map.width as i32 - super::VIEW_WIDTH);
         assert!(cam.1 <= game.map.height as i32 - super::VIEW_HEIGHT);
+    }
+
+    #[test]
+    fn line_reduces_on_break() {
+        let mut game = LurhookGame::default();
+        game.cast();
+        if let GameMode::Fishing { ref mut wait } = game.mode {
+            *wait = 0;
+        }
+        game.meter = Some(TensionMeter {
+            max_tension: 1,
+            ..Default::default()
+        });
+        game.update_fishing();
+        assert_eq!(game.player.line, 100 - super::LINE_DAMAGE);
+    }
+
+    #[test]
+    fn cannot_cast_without_line() {
+        let mut game = LurhookGame::default();
+        game.player.line = 0;
+        game.cast();
+        assert!(matches!(game.mode, GameMode::Exploring));
     }
 }
