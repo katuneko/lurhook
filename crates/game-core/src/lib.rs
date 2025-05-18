@@ -4,12 +4,13 @@ mod types;
 
 use bracket_lib::prelude::*;
 
-use common::GameResult;
+use common::{GameResult, GameError};
 use ecology::update_fish;
 use ecology::{spawn_fish, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext, UILayout};
+use data;
 
 /// Current game mode.
 enum GameMode {
@@ -19,11 +20,13 @@ enum GameMode {
 
 pub use types::Player;
 
+
 /// Basic game state implementing [`GameState`].
 pub struct LurhookGame {
     player: Player,
     map: Map,
     fishes: Vec<Fish>,
+    fish_types: Vec<data::FishType>,
     ui: UIContext,
     depth: i32,
     time_of_day: &'static str,
@@ -36,8 +39,10 @@ pub struct LurhookGame {
 impl LurhookGame {
     /// Creates a new game with a generated map.
     pub fn new(seed: u64) -> GameResult<Self> {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let fish_types = data::load_fish_types(path)?;
         let mut map = generate(seed)?;
-        let fish = spawn_fish(&mut map)?;
+        let fish = spawn_fish(&mut map, &fish_types)?;
         Ok(Self {
             player: Player {
                 pos: common::Point::new(40, 12),
@@ -47,6 +52,7 @@ impl LurhookGame {
             },
             map,
             fishes: vec![fish],
+            fish_types,
             ui: UIContext::default(),
             depth: 0,
             time_of_day: "Dawn",
@@ -121,7 +127,11 @@ impl LurhookGame {
                 let bite = self.rng.range(0, 100) < 50;
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
-                    self.meter = Some(TensionMeter::default());
+                    if let Some(f) = self.fishes.first() {
+                        self.meter = Some(TensionMeter::new(f.kind.strength));
+                    } else {
+                        self.meter = Some(TensionMeter::default());
+                    }
                 } else {
                     self.ui.add_log("The fish got away...").ok();
                     self.mode = GameMode::Exploring;
@@ -174,6 +184,16 @@ impl LurhookGame {
         for fish in &self.fishes {
             ctx.print(fish.position.x, fish.position.y, 'f');
         }
+    }
+
+    /// Saves a minimal game state to a RON-like file at `path`.
+    pub fn save_game(&self, path: &str) -> GameResult<()> {
+        let content = format!(
+            "(player:(pos:(x:{}, y:{}), hp:{}), time_of_day:\"{}\")",
+            self.player.pos.x, self.player.pos.y, self.player.hp, self.time_of_day
+        );
+        std::fs::write(path, content)?;
+        Ok(())
     }
 }
 
@@ -312,5 +332,14 @@ mod tests {
         game.update_fishing();
         assert!(matches!(game.mode, GameMode::Exploring));
         assert_eq!(game.ui.layout(), UILayout::Standard);
+    }
+
+    #[test]
+    fn save_writes_file() {
+        let game = LurhookGame::default();
+        let path = "test_save.ron";
+        game.save_game(path).unwrap();
+        assert!(std::fs::metadata(path).is_ok());
+        std::fs::remove_file(path).unwrap();
     }
 }

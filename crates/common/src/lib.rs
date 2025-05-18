@@ -17,8 +17,12 @@ impl Point {
 /// Unified error type for game logic.
 #[derive(thiserror::Error, Debug)]
 pub enum GameError {
-    #[error("invalid operation")] 
+    #[error("invalid operation")]
     InvalidOperation,
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error("parse error: {0}")]
+    Parse(String),
 }
 
 pub type GameResult<T> = Result<T, GameError>;

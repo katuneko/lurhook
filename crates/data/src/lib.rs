@@ -1,4 +1,62 @@
-//! data module for Lurhook
+//! Data loading utilities for Lurhook.
+
+use common::{GameError, GameResult};
+use serde::Deserialize;
+
+/// Fish species parameters loaded from JSON.
+#[derive(Clone, Debug, Deserialize)]
+pub struct FishType {
+    pub id: String,
+    pub name: String,
+    pub rarity: f32,
+    pub strength: i32,
+    pub min_depth: i32,
+    pub max_depth: i32,
+}
+
+/// Loads a list of [`FishType`] from the given JSON file path.
+pub fn load_fish_types(path: &str) -> GameResult<Vec<FishType>> {
+    let data = std::fs::read_to_string(path)?;
+    parse_fish_json(&data)
+}
+
+fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
+    // extremely naive JSON parser sufficient for the test asset
+    let mut fishes = Vec::new();
+    for obj in data.split('{').skip(1) {
+        if let Some(body) = obj.split('}').next() {
+            let mut id = String::new();
+            let mut name = String::new();
+            let mut rarity = 0.0;
+            let mut strength = 0;
+            let mut min_depth = 0;
+            let mut max_depth = 0;
+            for line in body.lines() {
+                let line = line.trim().trim_end_matches(',');
+                if line.is_empty() { continue; }
+                let mut parts = line.splitn(2, ':');
+                let key = parts.next().unwrap().trim().trim_matches('"');
+                let val = parts.next().unwrap().trim().trim_matches('"');
+                match key {
+                    "id" => id = val.to_string(),
+                    "name" => name = val.to_string(),
+                    "rarity" => rarity = val.parse().unwrap_or(0.0),
+                    "strength" => strength = val.parse().unwrap_or(0),
+                    "min_depth" => min_depth = val.parse().unwrap_or(0),
+                    "max_depth" => max_depth = val.parse().unwrap_or(0),
+                    _ => {},
+                }
+            }
+            if !id.is_empty() {
+                fishes.push(FishType { id, name, rarity, strength, min_depth, max_depth });
+            }
+        }
+    }
+    if fishes.is_empty() {
+        return Err(GameError::InvalidOperation);
+    }
+    Ok(fishes)
+}
 
 pub fn init() {
     println!("Initialized crate: data");
@@ -11,5 +69,12 @@ mod tests {
     #[test]
     fn init_runs() {
         init();
+    }
+
+    #[test]
+    fn load_sample_data() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let types = load_fish_types(path).expect("fish types");
+        assert!(!types.is_empty());
     }
 }

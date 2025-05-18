@@ -2,17 +2,12 @@
 use bracket_lib::prelude::RandomNumberGenerator;
 use common::{GameError, GameResult, Point};
 use mapgen::{Map, TileKind};
-
-/// Fish species enumeration.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FishKind {
-    Trout,
-}
+use data::FishType;
 
 /// Fish entity placeholder.
 #[derive(Clone, Debug)]
 pub struct Fish {
-    pub kind: FishKind,
+    pub kind: FishType,
     pub position: Point,
 }
 
@@ -35,7 +30,7 @@ pub fn update_fish(map: &Map, fishes: &mut [Fish]) -> GameResult<()> {
 }
 
 /// Spawns a dummy fish onto the map.
-pub fn spawn_fish(map: &mut Map) -> GameResult<Fish> {
+pub fn spawn_fish(map: &mut Map, fish_types: &[FishType]) -> GameResult<Fish> {
     // collect all water tile positions
     let mut water = Vec::new();
     for y in 0..map.height as i32 {
@@ -57,8 +52,10 @@ pub fn spawn_fish(map: &mut Map) -> GameResult<Fish> {
     let pos = water[idx];
     println!("Spawned fish at {:?}", pos);
     println!("Initialized crate: ecology");
+    let mut rng = RandomNumberGenerator::new();
+    let idx_fish = rng.range(0, fish_types.len() as i32) as usize;
     Ok(Fish {
-        kind: FishKind::Trout,
+        kind: fish_types[idx_fish].clone(),
         position: pos,
     })
 }
@@ -67,11 +64,14 @@ pub fn spawn_fish(map: &mut Map) -> GameResult<Fish> {
 mod tests {
     use super::*;
     use mapgen::generate;
+    use data::load_fish_types;
 
     #[test]
     fn spawn_one_fish() {
         let mut map = generate(0).expect("map");
-        let fish = spawn_fish(&mut map).expect("fish");
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let types = load_fish_types(path).expect("types");
+        let fish = spawn_fish(&mut map, &types).expect("fish");
         let tile = map.tiles[map.idx(fish.position)];
         assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
     }
@@ -79,7 +79,9 @@ mod tests {
     #[test]
     fn fish_moves_within_water_bounds() {
         let mut map = generate(0).expect("map");
-        let mut fish = spawn_fish(&mut map).expect("fish");
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let types = load_fish_types(path).expect("types");
+        let mut fish = spawn_fish(&mut map, &types).expect("fish");
         for _ in 0..20 {
             update_fish(&map, std::slice::from_mut(&mut fish)).unwrap();
             assert!(fish.position.x >= 0 && fish.position.x < map.width as i32);

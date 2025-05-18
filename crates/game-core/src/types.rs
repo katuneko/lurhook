@@ -1,8 +1,8 @@
 use common::Point;
-use ecology::FishKind;
+use data::FishType;
 
 /// Player entity with position, stats and inventory.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Player {
     pub pos: Point,
     /// Remaining hit points.
@@ -10,5 +10,5 @@ pub struct Player {
     /// Strength of the fishing line.
     pub line: i32,
     /// Collected fish kinds.
-    pub inventory: Vec<FishKind>,
+    pub inventory: Vec<FishType>,
 }
