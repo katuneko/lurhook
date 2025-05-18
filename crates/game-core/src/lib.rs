@@ -5,8 +5,8 @@ mod types;
 use bracket_lib::prelude::*;
 
 use common::GameResult;
-use ecology::{spawn_fish, Fish};
 use ecology::update_fish;
+use ecology::{spawn_fish, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext};
@@ -19,13 +19,14 @@ enum GameMode {
 
 pub use types::Player;
 
-
 /// Basic game state implementing [`GameState`].
 pub struct LurhookGame {
     player: Player,
     map: Map,
     fishes: Vec<Fish>,
     ui: UIContext,
+    depth: i32,
+    time_of_day: &'static str,
     rng: RandomNumberGenerator,
     mode: GameMode,
     meter: Option<TensionMeter>,
@@ -40,11 +41,15 @@ impl LurhookGame {
         Ok(Self {
             player: Player {
                 pos: common::Point::new(40, 12),
+                hp: 10,
+                line: 100,
                 inventory: Vec::new(),
             },
             map,
             fishes: vec![fish],
             ui: UIContext::default(),
+            depth: 0,
+            time_of_day: "Dawn",
             rng: RandomNumberGenerator::seeded(seed),
             mode: GameMode::Exploring,
             meter: None,
@@ -72,6 +77,14 @@ impl LurhookGame {
             }
             if key == R && matches!(self.mode, GameMode::Fishing { .. }) {
                 self.reeling = true;
+                return;
+            }
+            if key == PageUp {
+                self.ui.scroll_up();
+                return;
+            }
+            if key == PageDown {
+                self.ui.scroll_down();
                 return;
             }
             let delta = match key {
@@ -183,6 +196,16 @@ impl GameState for LurhookGame {
         if let Some(m) = &self.meter {
             self.ui.draw_tension(m.tension, m.max_tension).ok();
         }
+        self.ui.draw_logs(ctx).ok();
+        self.ui
+            .draw_status(
+                ctx,
+                self.player.hp,
+                self.player.line,
+                self.depth,
+                self.time_of_day,
+            )
+            .ok();
     }
 }
 
@@ -228,6 +251,8 @@ mod tests {
         let game = LurhookGame::default();
         assert_eq!(game.player.pos, common::Point::new(40, 12));
         assert!(game.player.inventory.is_empty());
+        assert_eq!(game.player.hp, 10);
+        assert_eq!(game.player.line, 100);
         assert_eq!(game.map.width, 80);
         assert_eq!(game.map.height, 25);
         assert_eq!(game.fishes.len(), 1);
@@ -276,7 +301,10 @@ mod tests {
         if let GameMode::Fishing { ref mut wait } = game.mode {
             *wait = 0;
         }
-        game.meter = Some(TensionMeter { duration: 1, ..Default::default() });
+        game.meter = Some(TensionMeter {
+            duration: 1,
+            ..Default::default()
+        });
         game.update_fishing();
         assert!(matches!(game.mode, GameMode::Exploring));
     }
