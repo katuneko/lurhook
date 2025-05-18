@@ -147,6 +147,12 @@ mod tests {
     }
 
     #[test]
+    fn tension_bar_zero_and_full() {
+        assert_eq!(super::tension_bar_string(0, 10), "[----------]");
+        assert_eq!(super::tension_bar_string(10, 10), "[##########]");
+    }
+
+    #[test]
     fn layout_switching() {
         let mut ui = UIContext::default();
         assert_eq!(ui.layout(), UILayout::Standard);

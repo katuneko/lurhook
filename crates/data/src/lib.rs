@@ -77,4 +77,18 @@ mod tests {
         let types = load_fish_types(path).expect("fish types");
         assert!(!types.is_empty());
     }
+
+    #[test]
+    fn parse_failure_when_empty() {
+        let res = parse_fish_json("");
+        assert!(matches!(res, Err(GameError::InvalidOperation)));
+    }
+
+    #[test]
+    fn parse_simple_data() {
+        let json = "[\n  {\n    \"id\": \"A\",\n    \"name\": \"A\",\n    \"rarity\": 1.0,\n    \"strength\": 1,\n    \"min_depth\": 0,\n    \"max_depth\": 1\n  }\n]";
+        let fishes = parse_fish_json(json).expect("fishes");
+        assert_eq!(fishes.len(), 1);
+        assert_eq!(fishes[0].id, "A");
+    }
 }

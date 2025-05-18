@@ -90,4 +90,16 @@ mod tests {
         let idx = map.idx(Point::new(3, 2));
         assert_eq!(idx, 2 * 10 + 3);
     }
+
+    #[test]
+    fn new_fills_with_land() {
+        let map = Map::new(4, 3);
+        assert!(map.tiles.iter().all(|&t| t == TileKind::Land));
+    }
+
+    #[test]
+    fn generated_map_has_water() {
+        let map = generate(1).expect("map");
+        assert!(map.tiles.iter().any(|&t| t != TileKind::Land));
+    }
 }

@@ -90,4 +90,13 @@ mod tests {
             assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
         }
     }
+
+    #[test]
+    fn spawn_fails_without_water() {
+        let mut map = Map::new(5, 5);
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let types = load_fish_types(path).expect("types");
+        let res = spawn_fish(&mut map, &types);
+        assert!(matches!(res, Err(GameError::InvalidOperation)));
+    }
 }

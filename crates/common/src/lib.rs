@@ -37,4 +37,17 @@ mod tests {
         assert_eq!(p.x, 2);
         assert_eq!(p.y, 3);
     }
+
+    #[test]
+    fn game_error_display_parse() {
+        let err = GameError::Parse("oops".into());
+        assert_eq!(format!("{}", err), "parse error: oops");
+    }
+
+    #[test]
+    fn io_error_conversion() {
+        let io_err = std::io::Error::from(std::io::ErrorKind::Other);
+        let err: GameError = io_err.into();
+        assert!(matches!(err, GameError::Io(_)));
+    }
 }
