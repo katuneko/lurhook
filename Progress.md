@@ -1,148 +1,48 @@
-# Lurhook 開発タスクリスト (GitHub 用)
+# Lurhook Game Improvement TODO Checklist
 
-> **目的**: `docs/requirements.md` と `docs/designs.md` に基づき、ローカル開発 (オンプレ環境、`cargo run`) を段階的に進めながら品質を結合ポイントで固めていく。
-> **管理方法**: 各項目は GitHub Issue として登録し、以下のチェックリストをコピーして進捗を管理してください。
+## Core Game System
 
----
+* [x] **Random Map Generation:** Implemented map creation using BSP and Perlin noise to generate a grid of tiles with land (`.`), shallow water (`~`), and deep water (`≈`) regions. This provides a new 80×25 map each run with depth variations for fishing spots.
+* [x] **Player Movement & Boundaries:** Enabled 8-directional player movement (including diagonals) with keyboard input (h/j/k/l or arrow keys, etc.), clamping the “@” player position within map bounds. The player can freely explore the map without moving off-screen.
+* [x] **Turn-Based Game Loop:** Integrated the main game loop using the bracket-lib engine. Each tick processes player input and then updates game state (e.g. moves fish) before rendering the map. This ensures a deterministic turn order where exploration mode calls fish AI updates and fishing mode runs the fishing mini-game logic.
+* [ ] **Return & Scoring System:** Add a mechanism to **end the fishing run** – for example, letting the player return to the start or press a key to conclude the trip – and then calculate a **final score** based on the fish caught. This involves defining a win/lose condition (e.g. voluntary return or “dropout” if HP or equipment is depleted) and tallying points (using fish rarity/values) to display the results.
+* [ ] **Day-Night Cycle:** Implement a game clock that advances time and cycles through Dawn/Day/Dusk/Night. The `time_of_day` field (currently fixed at "Dawn") should update as turns progress. This will lay the groundwork for time-sensitive mechanics (e.g. certain fish are active only at night or day).
 
-## マイルストーン構成
+## Fishing Mechanics
 
-| Milestone               | フェーズ       | 主な完成条件                 |
-| ----------------------- | ---------- | ---------------------- |
-| **M0 Foundation**       | Step 1–4   | ビルド通過 + プレイヤー移動 (空マップ) |
-| **M1 World & Ecology**  | Step 5–7   | ランダムマップ + 魚配置＆移動       |
-| **M2 Fishing Core**     | Step 8–10  | 釣りミニゲーム完成 + UI充実       |
-| **M3 Persistence & QA** | Step 11–12 | セーブ/ロード + CI & テスト拡充   |
+* [x] **Casting & Mode Switch:** Pressing the cast key (`c`) throws the line and switches the game state into **Fishing mode**. The UI layout changes and the game enters a waiting period (e.g. 2 turns) to simulate the line sinking before bite checks begin.
+* [x] **Bite Event Trigger:** After casting and a short wait, the game determines if a fish bites. Currently this uses a fixed probability (50% chance) to trigger a “Hooked a fish!” event. On a bite, the hooked fish is selected for the mini-game; otherwise, a log message indicates the fish got away and the game reverts to exploration mode.
+* [x] **Tension Bar Mini-Game:** When a fish is hooked, a **tension meter** is displayed and the player must press the reel key (`r`) strategically to keep tension below the breaking point until the timer expires. Each turn, not reeling causes tension to rise by the fish’s strength, while reeling reduces tension. If tension exceeds the max (line snaps) or the duration elapses, the mini-game ends with failure or success respectively.
+* [x] **Catch Outcome & Inventory:** Implemented outcome handling for the fishing mini-game. On success, the fish is pulled in – it’s removed from the map and added to the player’s inventory (of caught fish). On failure (the line broke or the fish escaped), the fish remains in the water (not caught) and the game returns to exploration.
+* [ ] **Adaptive Bite Probability:** Improve the bite chance calculation to use environmental and gear factors instead of a flat rate. For example, incorporate the water depth and bait/lure type into the formula for fish biting. This would fulfill the design goal that deeper waters and certain baits affect how likely a fish is to bite, adding strategic depth to casting choices.
+* [ ] **Line Durability Mechanic:** Introduce consequences for line breaks to make the resource meaningful. Each time the line snaps during the tension mini-game, reduce the player’s `line` durability stat (e.g. subtract from the 100 line strength). If the line durability falls to zero, the player can no longer fish (forcing a **dropout**). This ensures that repeated failures have a cost and encourages careful reeling.
 
----
+## Ecosystem & AI
 
-## 詳細タスク
+* [x] **Fish Spawning on Map:** On world generation, populate the map with fish entities at valid water tiles. Currently, one fish is spawned at a random water tile on startup. This establishes an initial ecosystem by placing fish in shallow or deep water areas where they can be encountered by the player.
+* [x] **Basic Fish Movement AI:** Implemented a simple AI for fish behavior. Each turn during exploration, fish perform a random walk – moving by a small random delta – and are constrained to stay within water tiles (shallow or deep). This gives the world a dynamic element as fish wander around rather than staying static.
+* [ ] **Multiple & Rare Fish Population:** Expand the spawning system to create **multiple fish** on the map, including varying species. Use the `rarity` field of each fish type to weight how often rare vs. common fish appear. This means generating a diverse school of fish at game start (or over time), so the player can catch more than one fish per run and has a chance to encounter rare high-value fish for a higher score.
+* [ ] **Depth-Specific Spawning:** Leverage each fish type’s `min_depth` and `max_depth` attributes to spawn fish only in appropriate regions. For example, shallow-water fish should spawn in shallows, while deep-sea species appear only in deep water. This may require assigning numeric depth levels to tiles (e.g. shallow tiles \~0–5m, deep tiles >5m) and filtering spawn locations so the ecosystem matches the intended habitat of each fish.
+* [ ] **Schooling Behavior:** Implement a group AI so that some fish form **schools**. Rather than moving completely independently, fish of the same school could follow a leader or move in a loosely cohesive cluster with some noise. This would make the ocean feel more alive – for instance, smaller fish might travel in groups, making them easier or harder to catch en masse and adding another layer to fish behavior.
+* [ ] **Time-of-Day Activity:** Tie fish behavior and spawning to the day-night cycle. Certain fish could become more active or move differently during specific times (e.g. nocturnal fish emerge at Night, others hide at Dusk). This will use the implemented time cycle to vary the ecology: for example, at Night fish might move faster or spawn in different areas, encouraging the player to consider time when planning to catch specific fish.
+* [ ] **Tidal Currents Effect:** Simulate ocean currents that influence fish movement patterns. For instance, implement a subtle drift where, during certain periods (tides), all fish positions shift or bias in one direction (and perhaps back again with ebb/flow). This environmental effect would add realism and challenge – the player might find fish have moved with the current, making positioning and timing more important.
 
-### Milestone **M0 Foundation**
+## UI/UX Improvements
 
-<details>
-<summary>クリックして展開</summary>
+* [x] **ASCII Map & Entity Rendering:** The game renders the map and entities in a clear ASCII format. Land tiles are shown as `.` and water as `~` (shallow) or `≈` (deep), with the player represented by `@` and fish by `f` on the map. This is implemented and provides an at-a-glance view of terrain and creatures each turn.
+* [x] **Fishing Mode Layout Toggle:** When the player enters fishing mode, the UI switches from the standard exploration layout to a fishing layout. In this mode, the **tension bar** is shown (at the bottom of the screen) and non-essential HUD elements adjust, focusing the interface on the fishing mini-game. On returning to exploration, the layout reverts to the normal view.
+* [x] **Event Log Panel with Scrolling:** A scrollable log panel displays recent game events (e.g. movement results, bite messages, outcomes). The log retains about 8 lines of text on screen, and the player can scroll up or down with PageUp/PageDown to review past messages. This feature is implemented, enhancing transparency of game events.
+* [x] **Status Panel Stats:** A status panel is shown, listing player vitals and context: **HP**, **Line** durability, current **Depth**, and **Time of day**. These values update in real-time (except depth/time are placeholders for now) to give the player feedback on health and equipment, as well as environment depth and day/night status.
+* [ ] **Inventory Display:** Implement an inventory view accessible via the `i` key, allowing the player to see what fish they have caught so far. This could be a simple text list or panel showing each captured fish’s name (and perhaps value/weight). Providing an inventory UI confirms successful catches and helps players plan (e.g. decide if they have room or need to return).
+* [ ] **Key Rebinding Support:** Allow players to remap controls for personal comfort and accessibility. For instance, read a configuration file (e.g. `lurhook.toml`) on startup to override default key bindings. This task involves defining a configurable input mapping and adjusting the input handling code to use it, so that players (especially on non-QWERTY keyboards or with preferences) can customize controls.
+* [ ] **Colorblind-Friendly Palette:** Provide alternate color schemes or symbols to accommodate colorblind players. The game should ensure important elements (land vs water, fish vs background, tension levels, etc.) are distinguishable without reliance on color hues. This may involve adding a toggle or automatically switching to a high-contrast palette and testing the ASCII colors for common color vision deficiencies.
+* [ ] **Visibility & LOS Effects:** Implement limited visibility rules, especially for deep water tiles. For example, in deep water areas the player’s field of view could be restricted, mimicking the darkness of the ocean depths – tiles and fish beyond a certain radius would not be visible unless illuminated or approached. This adds atmosphere and challenge, as venturing into deep sea would require careful exploration.
+* [ ] **Menu and End-of-Run Screens:** Add a title screen (main menu) and an end-of-run summary screen to frame the gameplay experience. On launch, a simple menu can prompt to Start Game (and possibly Load Game or view Instructions), aligning with the requirement of a title sequence. After the player returns or loses (end of expedition), display a summary showing total score and maybe stats like number of fish caught, then offer options to play again or quit.
 
-#### Step 1 — 環境セットアップ & CI 基盤
+## Peripheral Features
 
-* [x] Rust 1.78+ のインストール (`rustup`)
-* [x] リポジトリをクローンし、`cargo run` が "Welcome to Lurhook!" を表示することを確認
-* [x] `.github/workflows/ci.yml` を作成し、Ubuntu 最新版で以下を実行
-
-  * `cargo clippy -- -D warnings`
-  * `cargo test --all --offline`
-* [x] CI パイプラインがグリーンになることを確認
-
-#### Step 2 — インターフェース定義 & スタブ実装
-
-* [x] 各クレートの公開 API を明文化 (mapgen / ecology / fishing / ui / data)
-* [x] スタブ関数・構造体を実装し、ドキュメントコメントを付与
-* [x] `game-core::run()` でスタブを順に呼び出し、ビルドが通ることを確認
-
-#### Step 3 — 基本 UI ループ統合
-
-* [x] `bracket-lib` 依存を追加
-* [x] `LurhookGame` 構造体で `GameState` を実装
-* [x] 画面にプレースホルダ文字 (タイトル or `@`) を描画
-* [x] ウィンドウの作成・終了が正常なことを確認
-
-#### Step 4 — プレイヤー移動 & 入力ハンドリング
-
-* [x] h/j/k/l & 矢印キーで 8 方向移動を実装
-* [x] 画面端で移動を抑制する境界チェック
-* [x] 移動ロジックのユニットテスト
-
-</details>
-
----
-
-### Milestone **M1 World & Ecology**
-
-<details>
-<summary>クリックして展開</summary>
-
-#### Step 5 — マップ生成 (Mapgen)
-
-* [x] `Map` 構造体と `TileKind` 列挙型を設計
-* [x] `mapgen::generate(seed)` を BSP + パーリンノイズ (プレースホルダ可) で実装
-* [x] 生成マップを UI へ描画
-* [x] 固定シードのスナップショットテストを追加
-* [x] マップサイズを120×80に拡張し、プレイヤー中心にスクロール描画
-
-#### Step 6 — 魚スポーン (Ecology)
-
-* [x] `Fish` 構造体 & 種別列挙を定義
-* [x] `ecology::spawn_fish(&mut Map)` で水タイルへ魚を配置
-* [x] 魚シンボルを描画し、位置が妥当かテスト
-
-#### Step 7 — 魚 AI & ターン処理
-
-* [x] `ecology::update_fish` でランダム移動 AI を実装
-* [x] ゲームループへ統合 (入力→AI→描画)
-* [x] 境界・水域判定のユニットテスト
-
-</details>
-
----
-
-### Milestone **M2 Fishing Core**
-
-<details>
-<summary>クリックして展開</summary>
-
-#### Step 8 — 基本釣りフロー
-
-* [x] `c` キーでキャスト → 釣りモード遷移
-* [x] 待機ターン後、固定確率でバイト判定
-* [x] 成功時: 魚をインベントリへ、失敗時: ログに逃亡メッセージ
-* [x] 魚が残っていない場合、`cast` を無効にする事で虚偽の捕獲を防止
-
-#### Step 9 — テンションバー・ミニゲーム
-
-* [x] `TensionMeter` 構造体とテンション計算ロジック
-* [x] テンションバー UI を釣りモード時に描画
-* [x] 成功/失敗判定とユニットテスト (テンション計算)
-
-#### Step 10 — UI パネル & ログ強化
-
-* [x] ログウィンドウ (最大 8 行, PgUp/PgDn でスクロール)
-* [x] ステータスパネル (HP, Line, Depth, Time)
-* [x] 標準レイアウト/釣りレイアウトの切替
-
-</details>
-
----
-
-### Milestone **M3 Persistence & QA**
-
-<details>
-<summary>クリックして展開</summary>
-
-#### Step 11 — データロード & セーブ
-
-* [x] `assets/fish.json` を Serde で読み込み、魚種リスト生成
-* [x] 魚強度などゲームロジックをデータ駆動化
-* [x] ゲーム状態を RON 形式で保存 (`save_<datetime>.ron`)
-* [x] エラー時ハンドリングとロード機能 (任意)
-
-#### Step 12 — テスト拡充 & CI 強化
-
-* [x] 各クレートでユニットテストを追加し、80%+ カバレッジ
-* [ ] ゴールデンマスター & スナップショットテスト導入
-* [x] スナップショットテストの改行差異を吸収しクロスプラットフォーム化
-* [x] GitHub Actions を Linux/Windows/macOS + WASM マトリクスに拡張
-* [x] `cargo clippy -- -D warnings` を CI に組み込み、パフォーマンス回帰テスト(任意)
-
-</details>
-
----
-
-## 進め方ガイド
-
-1. **Issue 化**: 上記チェック項目を GitHub Issue として登録し、ラベル `foundation` / `world` / `fishing` / `persistence` を付与。
-2. **マイルストーン設定**: M0～M3 を GitHub Milestone に登録し、関連 Issue を紐付ける。
-3. **ブランチ戦略**: Milestone ごとに `feature/m0-*`, `feature/m1-*` などのプレフィックスを付け、`main` ブランチへ PR (Pull Request) ベースで統合。
-4. **レビュー & CI**: PR 作成時に CI が走り、グリーンになればレビュー。レビュー完了後にマージ。
-5. **進捗更新**: Issue のチェックボックスを更新し、完了したら `Closed`。
-
-> **メモ**: 本 `task.md` は進捗管理のハブとして README とは分けてリポジトリ直下に配置し、随時更新してください。
+* [x] **Data-Driven Game Content:** External JSON data is integrated for easy content management – e.g. fish species stats are loaded from `assets/fish.json` at startup. This is implemented, allowing fish properties (name, strength, rarity, depth range) to be modified without code changes. It sets the stage for flexible expansion of game content and balancing.
+* [ ] **Item Types & Gear Effects:** Utilize `assets/items.json` (which defines fishing rods, lures, bait types, etc.) to introduce gear mechanics. The player could select or find different rods and baits that influence gameplay – for example, a stronger rod increases max tension, or special bait increases bite rate for certain fish. Implementing this involves loading the item data and modifying fishing mechanics to account for equipped gear (e.g. adjusting bite probability or tension meter based on items).
+* [x] **Save & Load System:** Implemented the ability to save the game state to a file and load it back later. The game serializes key state (e.g. player position, HP, time of day, etc.) to a RON-formatted save file and can parse this file to restore a game session. This persistence feature is complete, enabling players to continue their adventure across sessions.
+* [ ] **In-Game Save/Exit Options:** Expose the save/load functionality and a proper exit through the UI. For example, allow pressing `S` in-game to quickly save progress, and `Q` to quit the game safely. This task involves adding input handling for those keys and possibly a confirmation prompt or menu selection for saving/quitting. It ensures players can pause and resume play at will, and exit without losing progress.
+* [ ] **Web (WASM) Deployment:** Prepare the game for WebAssembly deployment, allowing it to run in browsers. This requires building the project with the `wasm-pack` target and possibly adjusting some systems (e.g. file access or random number seeding) for a web environment. Once ready, publish the WASM build (for instance on GitHub Pages) so that players can play **Lurhook** on the web without installation. This expands the game’s reach and is planned as part of the final release.
