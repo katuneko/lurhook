@@ -22,3 +22,15 @@ pub enum GameError {
 }
 
 pub type GameResult<T> = Result<T, GameError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn point_new_sets_coordinates() {
+        let p = Point::new(2, 3);
+        assert_eq!(p.x, 2);
+        assert_eq!(p.y, 3);
+    }
+}

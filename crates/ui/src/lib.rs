@@ -36,4 +36,12 @@ mod tests {
         ui.add_log("test").unwrap();
         assert_eq!(ui.logs.len(), 1);
     }
+
+    #[test]
+    fn refresh_ok() {
+        let mut ui = UIContext::default();
+        ui.add_log("a").unwrap();
+        ui.add_log("b").unwrap();
+        assert!(ui.refresh().is_ok());
+    }
 }
