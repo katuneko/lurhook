@@ -111,6 +111,10 @@ impl LurhookGame {
     }
 
     fn cast(&mut self) {
+        if self.fishes.is_empty() {
+            self.ui.add_log("No fish around.").ok();
+            return;
+        }
         self.ui.add_log("Casting...").ok();
         self.ui.set_layout(UILayout::Fishing);
         self.mode = GameMode::Fishing { wait: 2 };
@@ -364,6 +368,15 @@ mod tests {
         game.cast();
         assert!(matches!(game.mode, GameMode::Fishing { .. }));
         assert_eq!(game.ui.layout(), UILayout::Fishing);
+    }
+
+    #[test]
+    fn cast_fails_without_fish() {
+        let mut game = LurhookGame::default();
+        game.fishes.clear();
+        game.cast();
+        assert!(matches!(game.mode, GameMode::Exploring));
+        assert_eq!(game.ui.layout(), UILayout::Standard);
     }
 
     #[test]

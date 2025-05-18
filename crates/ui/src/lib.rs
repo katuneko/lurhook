@@ -93,10 +93,10 @@ impl UIContext {
         time: &str,
     ) -> GameResult<()> {
         let base_y = if self.layout == UILayout::Fishing { LOG_Y + 1 } else { LOG_Y };
-        ctx.print(60, base_y, &format!("HP: {}", hp));
-        ctx.print(60, base_y + 1, &format!("Line: {}", line));
-        ctx.print(60, base_y + 2, &format!("Depth: {}m", depth));
-        ctx.print(60, base_y + 3, &format!("Time: {}", time));
+        ctx.print(60, base_y, format!("HP: {}", hp));
+        ctx.print(60, base_y + 1, format!("Line: {}", line));
+        ctx.print(60, base_y + 2, format!("Depth: {}m", depth));
+        ctx.print(60, base_y + 3, format!("Time: {}", time));
         Ok(())
     }
 
