@@ -48,4 +48,11 @@ mod tests {
         assert_eq!(map.height, 10);
         assert_eq!(map.tiles.len(), 100);
     }
+
+    #[test]
+    fn index_calculation() {
+        let map = Map::new(10, 10);
+        let idx = map.idx(Point::new(3, 2));
+        assert_eq!(idx, 2 * 10 + 3);
+    }
 }
