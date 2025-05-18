@@ -7,8 +7,11 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  build-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -20,3 +23,16 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Test
         run: cargo test --all --offline
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: '1.78'
+          target: wasm32-unknown-unknown
+          override: true
+      - name: Build (wasm)
+        run: cargo build --all --target wasm32-unknown-unknown --release
