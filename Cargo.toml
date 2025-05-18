@@ -6,7 +6,8 @@ members = [
     "crates/ecology",
     "crates/fishing",
     "crates/ui",
-    "crates/data"
+    "crates/data",
+    "crates/common"
 ]
 
 [package]

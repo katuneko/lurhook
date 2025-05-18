@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+common = { path = "../common" }
 bracket-lib = "0.8"
+mapgen = { path = "../mapgen" }
+ecology = { path = "../ecology" }
+fishing = { path = "../fishing" }
+ui = { path = "../ui" }
