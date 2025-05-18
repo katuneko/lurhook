@@ -6,7 +6,7 @@ use bracket_lib::prelude::*;
 
 use common::{GameResult, GameError};
 use ecology::update_fish;
-use ecology::{spawn_fish, Fish};
+use ecology::{spawn_fish_population, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext, UILayout};
@@ -45,7 +45,7 @@ impl LurhookGame {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let fish_types = data::load_fish_types(path)?;
         let mut map = generate(seed)?;
-        let fish = spawn_fish(&mut map, &fish_types)?;
+        let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         Ok(Self {
             player: Player {
                 pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
@@ -54,7 +54,7 @@ impl LurhookGame {
                 inventory: Vec::new(),
             },
             map,
-            fishes: vec![fish],
+            fishes,
             fish_types,
             ui: UIContext::default(),
             depth: 0,
@@ -361,7 +361,7 @@ mod tests {
         assert_eq!(game.player.line, 100);
         assert_eq!(game.map.width, 120);
         assert_eq!(game.map.height, 80);
-        assert_eq!(game.fishes.len(), 1);
+        assert_eq!(game.fishes.len(), 5);
         let fish = &game.fishes[0];
         let tile = game.map.tiles[game.map.idx(fish.position)];
         assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
