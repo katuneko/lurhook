@@ -103,8 +103,8 @@
 
 #### Step 10 — UI パネル & ログ強化
 
-* [ ] ログウィンドウ (最大 8 行, PgUp/PgDn でスクロール)
-* [ ] ステータスパネル (HP, Line, Depth, Time)
+* [x] ログウィンドウ (最大 8 行, PgUp/PgDn でスクロール)
+* [x] ステータスパネル (HP, Line, Depth, Time)
 * [ ] 標準レイアウト/釣りレイアウトの切替
 
 </details>
