@@ -1,0 +1,9 @@
+image: rust:1.78
+stages:
+  - test
+
+lint_and_test:
+  stage: test
+  script:
+    - cargo clippy -- -D warnings
+    - cargo test --all --offline
