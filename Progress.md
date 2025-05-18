@@ -26,12 +26,12 @@
 #### Step 1 — 環境セットアップ & CI 基盤
 
 * [x] Rust 1.78+ のインストール (`rustup`)
-* [ ] リポジトリをクローンし、`cargo run` が "Welcome to Lurhook!" を表示することを確認
-* [ ] `.gitlab-ci.yml` を作成し、Ubuntu 最新版で以下を実行
+* [x] リポジトリをクローンし、`cargo run` が "Welcome to Lurhook!" を表示することを確認
+* [x] `.gitlab-ci.yml` を作成し、Ubuntu 最新版で以下を実行
 
   * `cargo clippy -- -D warnings`
   * `cargo test --all --offline`
-* [ ] CI パイプラインがグリーンになることを確認
+* [x] CI パイプラインがグリーンになることを確認
 
 #### Step 2 — インターフェース定義 & スタブ実装
 
