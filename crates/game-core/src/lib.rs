@@ -10,6 +10,9 @@ use ecology::{spawn_fish, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext, UILayout};
+
+const VIEW_WIDTH: i32 = 60;
+const VIEW_HEIGHT: i32 = 17;
 use data;
 
 /// Current game mode.
@@ -45,7 +48,7 @@ impl LurhookGame {
         let fish = spawn_fish(&mut map, &fish_types)?;
         Ok(Self {
             player: Player {
-                pos: common::Point::new(40, 12),
+                pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
                 hp: 10,
                 line: 100,
                 inventory: Vec::new(),
@@ -61,6 +64,16 @@ impl LurhookGame {
             meter: None,
             reeling: false,
         })
+    }
+
+    fn camera(&self) -> (i32, i32) {
+        let half_w = VIEW_WIDTH / 2;
+        let half_h = VIEW_HEIGHT / 2;
+        let mut x = self.player.pos.x - half_w;
+        let mut y = self.player.pos.y - half_h;
+        x = x.clamp(0, self.map.width as i32 - VIEW_WIDTH);
+        y = y.clamp(0, self.map.height as i32 - VIEW_HEIGHT);
+        (x, y)
     }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
@@ -170,23 +183,37 @@ impl LurhookGame {
 
     /// Draws the map to the screen.
     fn draw_map(&self, ctx: &mut BTerm) {
-        for y in 0..self.map.height {
-            for x in 0..self.map.width {
-                let idx = self.map.idx(common::Point::new(x as i32, y as i32));
+        let (cam_x, cam_y) = self.camera();
+        for y in 0..VIEW_HEIGHT {
+            for x in 0..VIEW_WIDTH {
+                let mx = cam_x + x;
+                let my = cam_y + y;
+                let idx = self.map.idx(common::Point::new(mx, my));
                 let glyph = match self.map.tiles[idx] {
                     TileKind::Land => '.',
                     TileKind::ShallowWater => '~',
                     TileKind::DeepWater => '≈',
                 };
-                ctx.print(x as i32, y as i32, glyph);
+                ctx.print(x, y, glyph);
             }
         }
     }
 
     /// Draws all fish on the map.
     fn draw_fish(&self, ctx: &mut BTerm) {
+        let (cam_x, cam_y) = self.camera();
         for fish in &self.fishes {
-            ctx.print(fish.position.x, fish.position.y, 'f');
+            if fish.position.x >= cam_x
+                && fish.position.x < cam_x + VIEW_WIDTH
+                && fish.position.y >= cam_y
+                && fish.position.y < cam_y + VIEW_HEIGHT
+            {
+                ctx.print(
+                    fish.position.x - cam_x,
+                    fish.position.y - cam_y,
+                    'f',
+                );
+            }
         }
     }
 
@@ -267,7 +294,8 @@ impl GameState for LurhookGame {
         ctx.cls();
         self.draw_map(ctx);
         self.draw_fish(ctx);
-        ctx.print(self.player.pos.x, self.player.pos.y, "@");
+        let (cam_x, cam_y) = self.camera();
+        ctx.print(self.player.pos.x - cam_x, self.player.pos.y - cam_y, "@");
         if let Some(m) = &self.meter {
             self.ui.draw_tension(ctx, m.tension, m.max_tension).ok();
         }
@@ -324,12 +352,15 @@ mod tests {
     #[test]
     fn default_player_position() {
         let game = LurhookGame::default();
-        assert_eq!(game.player.pos, common::Point::new(40, 12));
+        assert_eq!(
+            game.player.pos,
+            common::Point::new(game.map.width as i32 / 2, game.map.height as i32 / 2)
+        );
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.player.hp, 10);
         assert_eq!(game.player.line, 100);
-        assert_eq!(game.map.width, 80);
-        assert_eq!(game.map.height, 25);
+        assert_eq!(game.map.width, 120);
+        assert_eq!(game.map.height, 80);
         assert_eq!(game.fishes.len(), 1);
         let fish = &game.fishes[0];
         let tile = game.map.tiles[game.map.idx(fish.position)];
