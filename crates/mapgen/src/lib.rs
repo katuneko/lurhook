@@ -77,7 +77,7 @@ mod tests {
     fn snapshot_seed_0() {
         let map = generate(0).expect("map");
         let expected = include_str!("snapshot_seed0.txt");
-        assert_eq!(format!("{:?}", map), expected);
+        assert_eq!(format!("{:?}\n", map), expected);
     }
 
     #[test]
