@@ -4,7 +4,7 @@ mod types;
 
 use bracket_lib::prelude::*;
 
-use common::{GameResult, GameError};
+use common::{GameError, GameResult};
 use ecology::update_fish;
 use ecology::{spawn_fish, Fish};
 use fishing::{init as fishing_init, TensionMeter};
@@ -22,7 +22,6 @@ enum GameMode {
 }
 
 pub use types::Player;
-
 
 /// Basic game state implementing [`GameState`].
 pub struct LurhookGame {
@@ -51,6 +50,7 @@ impl LurhookGame {
                 pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
                 hp: 10,
                 line: 100,
+                bait_bonus: 0.0,
                 inventory: Vec::new(),
             },
             map,
@@ -141,7 +141,13 @@ impl LurhookGame {
             }
 
             if self.meter.is_none() {
-                let bite = self.rng.range(0, 100) < 50;
+                let tile = if let Some(f) = self.fishes.first() {
+                    self.map.tiles[self.map.idx(f.position)]
+                } else {
+                    TileKind::ShallowWater
+                };
+                let chance = fishing::bite_probability(tile, self.player.bait_bonus);
+                let bite = self.rng.range(0.0, 1.0) < chance;
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
                     if let Some(f) = self.fishes.first() {
@@ -208,11 +214,7 @@ impl LurhookGame {
                 && fish.position.y >= cam_y
                 && fish.position.y < cam_y + VIEW_HEIGHT
             {
-                ctx.print(
-                    fish.position.x - cam_x,
-                    fish.position.y - cam_y,
-                    'f',
-                );
+                ctx.print(fish.position.x - cam_x, fish.position.y - cam_y, 'f');
             }
         }
     }
@@ -359,6 +361,7 @@ mod tests {
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.player.hp, 10);
         assert_eq!(game.player.line, 100);
+        assert_eq!(game.player.bait_bonus, 0.0);
         assert_eq!(game.map.width, 120);
         assert_eq!(game.map.height, 80);
         assert_eq!(game.fishes.len(), 1);
