@@ -128,8 +128,8 @@
 * [ ] 各クレートでユニットテストを追加し、80%+ カバレッジ
 * [ ] ゴールデンマスター & スナップショットテスト導入
 * [x] スナップショットテストの改行差異を吸収しクロスプラットフォーム化
-* [ ] GitHub Actions を Linux/Windows/macOS + WASM マトリクスに拡張
-* [ ] `cargo clippy -- -D warnings` を CI に組み込み、パフォーマンス回帰テスト(任意)
+* [x] GitHub Actions を Linux/Windows/macOS + WASM マトリクスに拡張
+* [x] `cargo clippy -- -D warnings` を CI に組み込み、パフォーマンス回帰テスト(任意)
 
 </details>
 
