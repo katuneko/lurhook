@@ -13,6 +13,8 @@ use ui::{init as ui_init, UIContext, UILayout};
 
 const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
+const TIME_SEGMENT_TURNS: u32 = 10;
+const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 use data;
 
 /// Current game mode.
@@ -33,6 +35,7 @@ pub struct LurhookGame {
     ui: UIContext,
     depth: i32,
     time_of_day: &'static str,
+    turn: u32,
     rng: RandomNumberGenerator,
     mode: GameMode,
     meter: Option<TensionMeter>,
@@ -58,7 +61,8 @@ impl LurhookGame {
             fish_types,
             ui: UIContext::default(),
             depth: 0,
-            time_of_day: "Dawn",
+            time_of_day: TIMES[0],
+            turn: 0,
             rng: RandomNumberGenerator::seeded(seed),
             mode: GameMode::Exploring,
             meter: None,
@@ -74,6 +78,12 @@ impl LurhookGame {
         x = x.clamp(0, self.map.width as i32 - VIEW_WIDTH);
         y = y.clamp(0, self.map.height as i32 - VIEW_HEIGHT);
         (x, y)
+    }
+
+    fn advance_time(&mut self) {
+        self.turn += 1;
+        let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
+        self.time_of_day = TIMES[idx as usize];
     }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
@@ -284,6 +294,7 @@ impl Default for LurhookGame {
 
 impl GameState for LurhookGame {
     fn tick(&mut self, ctx: &mut BTerm) {
+        self.advance_time();
         self.handle_input(ctx);
         match self.mode {
             GameMode::Exploring => {
@@ -457,5 +468,19 @@ mod tests {
         let cam = game.camera();
         assert!(cam.0 <= game.map.width as i32 - super::VIEW_WIDTH);
         assert!(cam.1 <= game.map.height as i32 - super::VIEW_HEIGHT);
+    }
+
+    #[test]
+    fn day_night_cycle_progresses() {
+        let mut game = LurhookGame::default();
+        assert_eq!(game.time_of_day, "Dawn");
+        for _ in 0..super::TIME_SEGMENT_TURNS {
+            game.advance_time();
+        }
+        assert_eq!(game.time_of_day, "Day");
+        for _ in 0..super::TIME_SEGMENT_TURNS {
+            game.advance_time();
+        }
+        assert_eq!(game.time_of_day, "Dusk");
     }
 }

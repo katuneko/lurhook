@@ -6,7 +6,7 @@
 * [x] **Player Movement & Boundaries:** Enabled 8-directional player movement (including diagonals) with keyboard input (h/j/k/l or arrow keys, etc.), clamping the “@” player position within map bounds. The player can freely explore the map without moving off-screen.
 * [x] **Turn-Based Game Loop:** Integrated the main game loop using the bracket-lib engine. Each tick processes player input and then updates game state (e.g. moves fish) before rendering the map. This ensures a deterministic turn order where exploration mode calls fish AI updates and fishing mode runs the fishing mini-game logic.
 * [ ] **Return & Scoring System:** Add a mechanism to **end the fishing run** – for example, letting the player return to the start or press a key to conclude the trip – and then calculate a **final score** based on the fish caught. This involves defining a win/lose condition (e.g. voluntary return or “dropout” if HP or equipment is depleted) and tallying points (using fish rarity/values) to display the results.
-* [ ] **Day-Night Cycle:** Implement a game clock that advances time and cycles through Dawn/Day/Dusk/Night. The `time_of_day` field (currently fixed at "Dawn") should update as turns progress. This will lay the groundwork for time-sensitive mechanics (e.g. certain fish are active only at night or day).
+* [x] **Day-Night Cycle:** Added a simple turn-based clock. Each tick advances a counter and updates the `time_of_day` string through Dawn → Day → Dusk → Night in a loop.
 
 ## Fishing Mechanics
 
