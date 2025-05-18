@@ -5,7 +5,7 @@ mod types;
 use bracket_lib::prelude::*;
 
 use common::GameResult;
-use ecology::spawn_fish;
+use ecology::{spawn_fish, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext};
@@ -17,16 +17,20 @@ pub use types::Player;
 pub struct LurhookGame {
     player: Player,
     map: Map,
+    fishes: Vec<Fish>,
 }
 
 impl LurhookGame {
     /// Creates a new game with a generated map.
     pub fn new(seed: u64) -> GameResult<Self> {
+        let mut map = generate(seed)?;
+        let fish = spawn_fish(&mut map)?;
         Ok(Self {
             player: Player {
                 pos: common::Point::new(40, 12),
             },
-            map: generate(seed)?,
+            map,
+            fishes: vec![fish],
         })
     }
     /// Moves the player by the given delta, clamped to screen bounds.
@@ -74,6 +78,13 @@ impl LurhookGame {
             }
         }
     }
+
+    /// Draws all fish on the map.
+    fn draw_fish(&self, ctx: &mut BTerm) {
+        for fish in &self.fishes {
+            ctx.print(fish.position.x, fish.position.y, 'f');
+        }
+    }
 }
 
 impl Default for LurhookGame {
@@ -87,6 +98,7 @@ impl GameState for LurhookGame {
         self.handle_input(ctx);
         ctx.cls();
         self.draw_map(ctx);
+        self.draw_fish(ctx);
         ctx.print(self.player.pos.x, self.player.pos.y, "@");
     }
 }
@@ -108,10 +120,8 @@ fn init_subsystems() -> GameResult<()> {
     ui_init();
     ui.add_log("UI initialized")?;
 
-    let mut map = generate(0)?;
+    let map = generate(0)?;
     ui.add_log(&format!("Map {}x{} generated", map.width, map.height))?;
-
-    let _fish = spawn_fish(&mut map)?;
     fishing_init();
     let mut meter = TensionMeter::default();
     meter.update();
@@ -136,6 +146,10 @@ mod tests {
         assert_eq!(game.player.pos, common::Point::new(40, 12));
         assert_eq!(game.map.width, 80);
         assert_eq!(game.map.height, 25);
+        assert_eq!(game.fishes.len(), 1);
+        let fish = &game.fishes[0];
+        let tile = game.map.tiles[game.map.idx(fish.position)];
+        assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
     }
 
     #[test]
