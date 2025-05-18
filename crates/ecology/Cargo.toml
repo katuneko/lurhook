@@ -7,4 +7,5 @@ edition = "2021"
 common = { path = "../common" }
 mapgen = { path = "../mapgen" }
 bracket-lib = "0.8"
+data = { path = "../data" }
 

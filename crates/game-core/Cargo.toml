@@ -10,3 +10,4 @@ mapgen = { path = "../mapgen" }
 ecology = { path = "../ecology" }
 fishing = { path = "../fishing" }
 ui = { path = "../ui" }
+data = { path = "../data" }
