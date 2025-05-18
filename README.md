@@ -96,7 +96,7 @@ $ wasm-pack build --target web
 ## 📝 開発ルール
 
 1. **main ブランチは常にビルド可能**。機能追加は `feature/*` → PR → マージ。
-2. `cargo clippy` & `cargo test` を CI で自動実行。
+2. `cargo clippy` & `cargo test` を GitHub Actions で自動実行。
 3. `devlog/` に mdBook 形式で開発ログを残す（モチベ維持！）。
 
 ## 🤝 コントリビューション
