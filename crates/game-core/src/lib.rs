@@ -28,6 +28,8 @@ pub struct LurhookGame {
     ui: UIContext,
     rng: RandomNumberGenerator,
     mode: GameMode,
+    meter: Option<TensionMeter>,
+    reeling: bool,
 }
 
 impl LurhookGame {
@@ -45,6 +47,8 @@ impl LurhookGame {
             ui: UIContext::default(),
             rng: RandomNumberGenerator::seeded(seed),
             mode: GameMode::Exploring,
+            meter: None,
+            reeling: false,
         })
     }
     /// Moves the player by the given delta, clamped to screen bounds.
@@ -59,10 +63,15 @@ impl LurhookGame {
 
     /// Handles input and updates the player position accordingly.
     fn handle_input(&mut self, ctx: &mut BTerm) {
+        self.reeling = false;
         if let Some(key) = ctx.key {
             use VirtualKeyCode::*;
             if key == C && matches!(self.mode, GameMode::Exploring) {
                 self.cast();
+                return;
+            }
+            if key == R && matches!(self.mode, GameMode::Fishing { .. }) {
+                self.reeling = true;
                 return;
             }
             let delta = match key {
@@ -93,18 +102,39 @@ impl LurhookGame {
                 *wait -= 1;
                 return;
             }
-            let bite = self.rng.range(0, 100) < 50;
-            if bite {
-                if let Some(fish) = self.fishes.pop() {
-                    self.player.inventory.push(fish.kind);
-                    self.ui.add_log("Caught a fish!").ok();
+
+            if self.meter.is_none() {
+                let bite = self.rng.range(0, 100) < 50;
+                if bite {
+                    self.ui.add_log("Hooked a fish!").ok();
+                    self.meter = Some(TensionMeter::default());
                 } else {
-                    self.ui.add_log("Nothing bites").ok();
+                    self.ui.add_log("The fish got away...").ok();
+                    self.mode = GameMode::Exploring;
                 }
-            } else {
-                self.ui.add_log("The fish got away...").ok();
+                return;
             }
-            self.mode = GameMode::Exploring;
+
+            if let Some(mut meter) = self.meter.take() {
+                use fishing::MeterState;
+                match meter.update(self.reeling) {
+                    MeterState::Ongoing => {
+                        self.ui.draw_tension(meter.tension, meter.max_tension).ok();
+                        self.meter = Some(meter);
+                    }
+                    MeterState::Success => {
+                        if let Some(fish) = self.fishes.pop() {
+                            self.player.inventory.push(fish.kind);
+                            self.ui.add_log("Caught a fish!").ok();
+                        }
+                        self.mode = GameMode::Exploring;
+                    }
+                    MeterState::Broken => {
+                        self.ui.add_log("Line snapped!").ok();
+                        self.mode = GameMode::Exploring;
+                    }
+                }
+            }
         }
     }
 
@@ -150,6 +180,9 @@ impl GameState for LurhookGame {
         self.draw_map(ctx);
         self.draw_fish(ctx);
         ctx.print(self.player.pos.x, self.player.pos.y, "@");
+        if let Some(m) = &self.meter {
+            self.ui.draw_tension(m.tension, m.max_tension).ok();
+        }
     }
 }
 
@@ -174,7 +207,7 @@ fn init_subsystems() -> GameResult<()> {
     ui.add_log(&format!("Map {}x{} generated", map.width, map.height))?;
     fishing_init();
     let mut meter = TensionMeter::default();
-    meter.update();
+    meter.update(false);
     meter.draw();
 
     ui.refresh()?;
@@ -243,6 +276,7 @@ mod tests {
         if let GameMode::Fishing { ref mut wait } = game.mode {
             *wait = 0;
         }
+        game.meter = Some(TensionMeter { duration: 1, ..Default::default() });
         game.update_fishing();
         assert!(matches!(game.mode, GameMode::Exploring));
     }

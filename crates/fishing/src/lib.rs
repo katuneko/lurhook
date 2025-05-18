@@ -1,21 +1,66 @@
-//! Fishing minigame stubs.
+//! Fishing minigame utilities.
 
-/// Manages fishing line tension.
-#[derive(Debug, Default)]
+/// Result of a [`TensionMeter::update`] call.
+#[derive(Debug, PartialEq, Eq)]
+pub enum MeterState {
+    /// The mini game continues.
+    Ongoing,
+    /// The player reeled in the fish successfully.
+    Success,
+    /// The line tension exceeded the limit and snapped.
+    Broken,
+}
+
+/// Manages fishing line tension over time.
+#[derive(Debug)]
 pub struct TensionMeter {
-    pub tension: u32,
+    /// Current tension value.
+    pub tension: i32,
+    /// Maximum allowed tension before the line breaks.
+    pub max_tension: i32,
+    /// Remaining turns until the fish is caught.
+    pub duration: i32,
+    /// Strength applied by the hooked fish each turn.
+    pub strength: i32,
 }
 
 impl TensionMeter {
-    /// Updates internal tension. Placeholder implementation.
-    pub fn update(&mut self) {
-        self.tension = self.tension.saturating_add(1);
-        println!("Tension updated: {}", self.tension);
+    /// Creates a new [`TensionMeter`] with the given fish strength.
+    pub fn new(strength: i32) -> Self {
+        Self { tension: 0, max_tension: 100, duration: 5, strength }
+    }
+
+    /// Updates internal tension.
+    ///
+    /// If `reel` is `true`, the player attempts to reduce tension by reeling
+    /// in the line. Otherwise the fish pulls with its strength. The returned
+    /// [`MeterState`] indicates whether the mini game has finished.
+    pub fn update(&mut self, reel: bool) -> MeterState {
+        if reel {
+            self.tension = (self.tension - 10).max(0);
+        } else {
+            self.tension += self.strength;
+        }
+        self.duration -= 1;
+
+        if self.tension >= self.max_tension {
+            MeterState::Broken
+        } else if self.duration <= 0 {
+            MeterState::Success
+        } else {
+            MeterState::Ongoing
+        }
     }
 
     /// Draws the tension meter to stdout.
     pub fn draw(&self) {
-        println!("Tension meter: {}", self.tension);
+        println!("Tension meter: {}/{}", self.tension, self.max_tension);
+    }
+}
+
+impl Default for TensionMeter {
+    fn default() -> Self {
+        Self::new(5)
     }
 }
 
@@ -30,7 +75,27 @@ mod tests {
     #[test]
     fn tension_increases() {
         let mut meter = TensionMeter::default();
-        meter.update();
-        assert_eq!(meter.tension, 1);
+        assert_eq!(meter.update(false), MeterState::Ongoing);
+        assert_eq!(meter.tension, meter.strength);
+    }
+
+    #[test]
+    fn reel_reduces_tension() {
+        let mut meter = TensionMeter::new(10);
+        meter.update(false); // tension 10
+        meter.update(true); // reel
+        assert!(meter.tension < 10);
+    }
+
+    #[test]
+    fn breaks_when_exceeding_max() {
+        let mut meter = TensionMeter { max_tension: 5, ..TensionMeter::new(10) };
+        assert_eq!(meter.update(false), MeterState::Broken);
+    }
+
+    #[test]
+    fn succeeds_after_duration() {
+        let mut meter = TensionMeter { duration: 1, ..TensionMeter::new(1) };
+        assert_eq!(meter.update(false), MeterState::Success);
     }
 }

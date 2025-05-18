@@ -20,6 +20,15 @@ impl UIContext {
         println!("Refreshed UI with {} log entries", self.logs.len());
         Ok(())
     }
+
+    /// Draws a simple tension bar using ASCII.
+    pub fn draw_tension(&self, tension: i32, max: i32) -> GameResult<()> {
+        let width = 10;
+        let filled = ((tension as f32 / max as f32) * width as f32).round() as usize;
+        let bar = format!("[{}{}]", "#".repeat(filled), "-".repeat(width - filled));
+        println!("Tension {}", bar);
+        Ok(())
+    }
 }
 
 pub fn init() {
@@ -43,5 +52,11 @@ mod tests {
         ui.add_log("a").unwrap();
         ui.add_log("b").unwrap();
         assert!(ui.refresh().is_ok());
+    }
+
+    #[test]
+    fn draw_tension_bar() {
+        let ui = UIContext::default();
+        assert!(ui.draw_tension(5, 10).is_ok());
     }
 }
