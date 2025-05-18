@@ -195,6 +195,54 @@ impl LurhookGame {
         std::fs::write(path, content)?;
         Ok(())
     }
+
+    /// Loads a minimal game state from a RON-like file at `path`.
+    pub fn load_game(path: &str) -> GameResult<Self> {
+        let data = std::fs::read_to_string(path)?;
+        // very small parser for the expected format
+        fn parse_i32(s: &str, key: &str) -> GameResult<i32> {
+            let start = s
+                .find(key)
+                .ok_or_else(|| GameError::Parse(format!("missing {}", key)))?;
+            let s = &s[start + key.len()..];
+            let end = s
+                .find(|c: char| c == ',' || c == ')')
+                .ok_or_else(|| GameError::Parse(format!("malformed {}", key)))?;
+            s[..end]
+                .trim()
+                .parse()
+                .map_err(|_| GameError::Parse(format!("invalid {}", key)))
+        }
+
+        fn parse_str<'a>(s: &'a str, key: &str) -> GameResult<&'a str> {
+            let start = s
+                .find(key)
+                .ok_or_else(|| GameError::Parse(format!("missing {}", key)))?;
+            let s = &s[start + key.len()..];
+            let start_quote = s
+                .find('"')
+                .ok_or_else(|| GameError::Parse(format!("malformed {}", key)))?
+                + 1;
+            let end_quote = s[start_quote..]
+                .find('"')
+                .ok_or_else(|| GameError::Parse(format!("malformed {}", key)))?;
+            Ok(&s[start_quote..start_quote + end_quote])
+        }
+
+        let mut game = Self::new(0)?;
+        game.player.pos.x = parse_i32(&data, "x:")?;
+        game.player.pos.y = parse_i32(&data, "y:")?;
+        game.player.hp = parse_i32(&data, "hp:")?;
+        let tod = parse_str(&data, "time_of_day:")?;
+        game.time_of_day = match tod {
+            "Dawn" => "Dawn",
+            "Day" => "Day",
+            "Dusk" => "Dusk",
+            "Night" => "Night",
+            other => return Err(GameError::Parse(format!("invalid time_of_day {}", other))),
+        };
+        Ok(game)
+    }
 }
 
 impl Default for LurhookGame {
@@ -337,9 +385,21 @@ mod tests {
     #[test]
     fn save_writes_file() {
         let game = LurhookGame::default();
-        let path = "test_save.ron";
+        let path = "test_save_writes.ron";
         game.save_game(path).unwrap();
         assert!(std::fs::metadata(path).is_ok());
         std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn save_and_load_roundtrip() {
+        let game = LurhookGame::default();
+        let path = "test_save_roundtrip.ron";
+        game.save_game(path).unwrap();
+        let loaded = LurhookGame::load_game(path).unwrap();
+        std::fs::remove_file(path).unwrap();
+        assert_eq!(loaded.player.pos, game.player.pos);
+        assert_eq!(loaded.player.hp, game.player.hp);
+        assert_eq!(loaded.time_of_day, game.time_of_day);
     }
 }

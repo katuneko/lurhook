@@ -533,6 +533,7 @@ name = "data"
 version = "0.1.0"
 dependencies = [
  "common",
+ "serde",
 ]
 
 [[package]]
@@ -576,6 +577,7 @@ version = "0.1.0"
 dependencies = [
  "bracket-lib",
  "common",
+ "data",
  "mapgen",
 ]
 
@@ -703,6 +705,7 @@ version = "0.1.0"
 dependencies = [
  "bracket-lib",
  "common",
+ "data",
  "ecology",
  "fishing",
  "mapgen",
