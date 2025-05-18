@@ -39,8 +39,8 @@ impl Map {
 
 /// Generates a map using Perlin noise.
 pub fn generate(seed: u64) -> GameResult<Map> {
-    let width = 80;
-    let height = 25;
+    let width = 120;
+    let height = 80;
     let mut map = Map::new(width, height);
     let mut noise = FastNoise::seeded(seed);
     noise.set_noise_type(NoiseType::Perlin);
@@ -72,9 +72,9 @@ mod tests {
     #[test]
     fn generate_map() {
         let map = generate(0).expect("map");
-        assert_eq!(map.width, 80);
-        assert_eq!(map.height, 25);
-        assert_eq!(map.tiles.len(), 80 * 25);
+        assert_eq!(map.width, 120);
+        assert_eq!(map.height, 80);
+        assert_eq!(map.tiles.len(), 120 * 80);
     }
 
     #[test]
