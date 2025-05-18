@@ -32,6 +32,11 @@ $ cd lurhook
 $ cargo run --release
 ```
 
+実行すると bracket-lib がウィンドウを開き、画面中央に `@` が表示されます。
+
+```
+```
+
 #### ターミナル専用バックエンド
 
 ```bash

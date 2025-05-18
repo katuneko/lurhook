@@ -2,7 +2,9 @@
 
 mod types;
 
-use common::{GameResult};
+use bracket_lib::prelude::*;
+
+use common::GameResult;
 use ecology::spawn_fish;
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::generate;
@@ -10,12 +12,39 @@ use ui::{init as ui_init, UIContext};
 
 pub use types::Player;
 
-/// Runs the game using stub modules.
-pub fn run() {
-    println!("Welcome to Lurhook! (engine stub)");
-    if let Err(e) = init_subsystems() {
-        eprintln!("Initialization error: {}", e);
+/// Basic game state implementing [`GameState`].
+pub struct LurhookGame {
+    player: Player,
+}
+
+impl Default for LurhookGame {
+    fn default() -> Self {
+        Self {
+            player: Player {
+                pos: common::Point::new(40, 12),
+            },
+        }
     }
+}
+
+impl GameState for LurhookGame {
+    fn tick(&mut self, ctx: &mut BTerm) {
+        ctx.cls();
+        ctx.print(self.player.pos.x, self.player.pos.y, "@");
+    }
+}
+
+/// Runs the game loop using [`bracket-lib`].
+pub fn run() -> BError {
+    println!("Welcome to Lurhook! (engine stub)");
+    init_subsystems()?;
+
+    let context = BTermBuilder::new()
+        .with_dimensions(80, 25)
+        .with_title("Lurhook")
+        .build()?;
+    let gs = LurhookGame::default();
+    main_loop(context, gs)
 }
 
 fn init_subsystems() -> GameResult<()> {
@@ -43,5 +72,11 @@ mod tests {
     #[test]
     fn init_ok() {
         assert!(init_subsystems().is_ok());
+    }
+
+    #[test]
+    fn default_player_position() {
+        let game = LurhookGame::default();
+        assert_eq!(game.player.pos, common::Point::new(40, 12));
     }
 }
