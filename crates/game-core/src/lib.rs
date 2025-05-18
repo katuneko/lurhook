@@ -39,8 +39,7 @@ pub fn run() -> BError {
     println!("Welcome to Lurhook! (engine stub)");
     init_subsystems()?;
 
-    let context = BTermBuilder::new()
-        .with_dimensions(80, 25)
+    let context = BTermBuilder::simple(80, 25)?
         .with_title("Lurhook")
         .build()?;
     let gs = LurhookGame::default();
