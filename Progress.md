@@ -70,9 +70,9 @@
 
 #### Step 6 — 魚スポーン (Ecology)
 
-* [ ] `Fish` 構造体 & 種別列挙を定義
-* [ ] `ecology::spawn_fish(&mut Map)` で水タイルへ魚を配置
-* [ ] 魚シンボルを描画し、位置が妥当かテスト
+* [x] `Fish` 構造体 & 種別列挙を定義
+* [x] `ecology::spawn_fish(&mut Map)` で水タイルへ魚を配置
+* [x] 魚シンボルを描画し、位置が妥当かテスト
 
 #### Step 7 — 魚 AI & ターン処理
 

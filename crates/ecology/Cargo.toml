@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 common = { path = "../common" }
 mapgen = { path = "../mapgen" }
+bracket-lib = "0.8"
 

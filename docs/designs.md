@@ -123,7 +123,7 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 | Producer | Consumer  | 関数 / Channel                   | 内容            |
 | -------- | --------- | ------------------------------ | ------------- |
 | mapgen   | game-core | `pub fn generate(seed) -> Map` | 新マップ生成        |
-| ecology  | game-core | `pub fn spawn_fish(map)`       | 魚 Entity 配置   |
+| ecology  | game-core | `pub fn spawn_fish(map)`       | 魚 Entity 配置 (水タイルからランダム選択) |
 | fishing  | ui        | `pub struct TensionMeter`      | Draw + 更新メソッド |
 | ui       | game-core | `pub struct UIContext`         | ログ追加, リフレッシュ  |
 
