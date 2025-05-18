@@ -9,6 +9,8 @@ pub struct Player {
     pub hp: i32,
     /// Strength of the fishing line.
     pub line: i32,
+    /// Bonus applied to bite probability from equipped bait/lure.
+    pub bait_bonus: f32,
     /// Collected fish kinds.
     pub inventory: Vec<FishType>,
 }

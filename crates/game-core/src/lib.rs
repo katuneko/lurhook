@@ -6,7 +6,7 @@ use bracket_lib::prelude::*;
 
 use common::{GameError, GameResult};
 use ecology::update_fish;
-use ecology::{spawn_fish, Fish};
+use ecology::{spawn_fish_population, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext, UILayout};
@@ -48,16 +48,17 @@ impl LurhookGame {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let fish_types = data::load_fish_types(path)?;
         let mut map = generate(seed)?;
-        let fish = spawn_fish(&mut map, &fish_types)?;
+        let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         Ok(Self {
             player: Player {
                 pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
                 hp: 10,
                 line: 100,
+                bait_bonus: 0.0,
                 inventory: Vec::new(),
             },
             map,
-            fishes: vec![fish],
+            fishes,
             fish_types,
             ui: UIContext::default(),
             depth: 0,
@@ -96,7 +97,8 @@ impl LurhookGame {
     }
 
     fn score(&self) -> i32 {
-        self.player
+        self
+            .player
             .inventory
             .iter()
             .map(|f| ((1.0 / f.rarity) * 10.0) as i32)
@@ -171,7 +173,13 @@ impl LurhookGame {
             }
 
             if self.meter.is_none() {
-                let bite = self.rng.range(0, 100) < 50;
+                let tile = if let Some(f) = self.fishes.first() {
+                    self.map.tiles[self.map.idx(f.position)]
+                } else {
+                    TileKind::ShallowWater
+                };
+                let chance = fishing::bite_probability(tile, self.player.bait_bonus);
+                let bite = self.rng.range(0.0, 1.0) < chance;
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
                     if let Some(f) = self.fishes.first() {
@@ -392,9 +400,10 @@ mod tests {
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.player.hp, 10);
         assert_eq!(game.player.line, 100);
+        assert_eq!(game.player.bait_bonus, 0.0);
         assert_eq!(game.map.width, 120);
         assert_eq!(game.map.height, 80);
-        assert_eq!(game.fishes.len(), 1);
+        assert_eq!(game.fishes.len(), 5);
         let fish = &game.fishes[0];
         let tile = game.map.tiles[game.map.idx(fish.position)];
         assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
