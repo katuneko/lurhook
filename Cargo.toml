@@ -1,0 +1,19 @@
+[workspace]
+members = [
+    ".",
+    "crates/game-core",
+    "crates/mapgen",
+    "crates/ecology",
+    "crates/fishing",
+    "crates/ui",
+    "crates/data"
+]
+
+[package]
+name = "lurhook"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Path dependency to game-core
+game-core = { path = "crates/game-core" }
