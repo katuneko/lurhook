@@ -1,6 +1,6 @@
 //! Map generation utilities.
 use bracket_lib::prelude::{FastNoise, NoiseType};
-use common::{Point, GameResult};
+use common::{GameResult, Point};
 
 /// Kind of a tile on the game map.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,7 +24,11 @@ pub struct Map {
 impl Map {
     /// Creates a new map filled with [`TileKind::Land`].
     pub fn new(width: u32, height: u32) -> Self {
-        Self { width, height, tiles: vec![TileKind::Land; (width * height) as usize] }
+        Self {
+            width,
+            height,
+            tiles: vec![TileKind::Land; (width * height) as usize],
+        }
     }
 
     /// Returns tile index from coordinates.
@@ -76,7 +80,7 @@ mod tests {
     #[test]
     fn snapshot_seed_0() {
         let map = generate(0).expect("map");
-        let expected = include_str!("snapshot_seed0.txt");
+        let expected = include_str!("snapshot_seed0.txt").replace('\r', "");
         assert_eq!(format!("{:?}\n", map), expected);
     }
 
