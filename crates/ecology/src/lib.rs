@@ -19,7 +19,7 @@ pub struct Fish {
 pub fn spawn_fish(map: &mut Map) -> GameResult<Fish> {
     // pick first water tile or origin
     let pos = Point::new(0, 0);
-    if matches!(map.tiles[map.idx(pos)], TileKind::Water) {
+    if matches!(map.tiles[map.idx(pos)], TileKind::ShallowWater | TileKind::DeepWater) {
         println!("Spawned fish at {:?}", pos);
     }
     println!("Initialized crate: ecology");
