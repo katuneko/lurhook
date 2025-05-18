@@ -29,9 +29,18 @@ pub fn update_fish(map: &Map, fishes: &mut [Fish]) -> GameResult<()> {
     Ok(())
 }
 
-/// Spawns a dummy fish onto the map.
+/// Spawns a single fish onto the map.
 pub fn spawn_fish(map: &mut Map, fish_types: &[FishType]) -> GameResult<Fish> {
-    // collect all water tile positions
+    let mut fishes = spawn_fish_population(map, fish_types, 1)?;
+    Ok(fishes.remove(0))
+}
+
+/// Spawns `count` fish on water tiles weighted by rarity.
+pub fn spawn_fish_population(
+    map: &mut Map,
+    fish_types: &[FishType],
+    count: usize,
+) -> GameResult<Vec<Fish>> {
     let mut water = Vec::new();
     for y in 0..map.height as i32 {
         for x in 0..map.width as i32 {
@@ -48,16 +57,32 @@ pub fn spawn_fish(map: &mut Map, fish_types: &[FishType]) -> GameResult<Fish> {
     }
 
     let mut rng = RandomNumberGenerator::new();
-    let idx = rng.range(0, water.len() as i32) as usize;
-    let pos = water[idx];
-    println!("Spawned fish at {:?}", pos);
+    let mut fishes = Vec::new();
+    let max = count.min(water.len());
+    for _ in 0..max {
+        let idx = rng.range(0, water.len() as i32) as usize;
+        let pos = water.swap_remove(idx);
+
+        let total: f32 = fish_types.iter().map(|f| f.rarity).sum();
+        let mut roll = rng.range(0.0, total);
+        let mut chosen = &fish_types[0];
+        for ft in fish_types {
+            roll -= ft.rarity;
+            if roll <= 0.0 {
+                chosen = ft;
+                break;
+            }
+        }
+
+        fishes.push(Fish {
+            kind: chosen.clone(),
+            position: pos,
+        });
+    }
+
+    println!("Spawned {} fish", fishes.len());
     println!("Initialized crate: ecology");
-    let mut rng = RandomNumberGenerator::new();
-    let idx_fish = rng.range(0, fish_types.len() as i32) as usize;
-    Ok(Fish {
-        kind: fish_types[idx_fish].clone(),
-        position: pos,
-    })
+    Ok(fishes)
 }
 
 #[cfg(test)]
@@ -74,6 +99,19 @@ mod tests {
         let fish = spawn_fish(&mut map, &types).expect("fish");
         let tile = map.tiles[map.idx(fish.position)];
         assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
+    }
+
+    #[test]
+    fn spawn_many_fish() {
+        let mut map = generate(0).expect("map");
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let types = load_fish_types(path).expect("types");
+        let fishes = spawn_fish_population(&mut map, &types, 5).expect("fishes");
+        assert_eq!(fishes.len(), 5);
+        for f in fishes {
+            let tile = map.tiles[map.idx(f.position)];
+            assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
+        }
     }
 
     #[test]
@@ -96,7 +134,7 @@ mod tests {
         let mut map = Map::new(5, 5);
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let types = load_fish_types(path).expect("types");
-        let res = spawn_fish(&mut map, &types);
+        let res = spawn_fish_population(&mut map, &types, 3);
         assert!(matches!(res, Err(GameError::InvalidOperation)));
     }
 }

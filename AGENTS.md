@@ -1,5 +1,5 @@
 # Agentへの指示
-- ユーザーからの指示に従って、プロジェクトトップのProgress.mdとTaskDetail.mdを参照してタスクを進めること
+- ユーザーからの指示に従って、プロジェクトトップのProgress.mdを参照してタスクを進めること
 - 自分が新規実装を進めた分は必ずProgress.mdに反映して更新すること。
 - 要件定義はdocs中のrequirements.mdを参照すること
 - 設計ドキュメントはdocs中のdesignes.mdを参照すること

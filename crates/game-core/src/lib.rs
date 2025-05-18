@@ -6,7 +6,7 @@ use bracket_lib::prelude::*;
 
 use common::{GameError, GameResult};
 use ecology::update_fish;
-use ecology::{spawn_fish, Fish};
+use ecology::{spawn_fish_population, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext, UILayout};
@@ -14,12 +14,15 @@ use ui::{init as ui_init, UIContext, UILayout};
 const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
+const TIME_SEGMENT_TURNS: u32 = 10;
+const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 use data;
 
 /// Current game mode.
 enum GameMode {
     Exploring,
     Fishing { wait: u8 },
+    End { score: i32 },
 }
 
 pub use types::Player;
@@ -33,6 +36,7 @@ pub struct LurhookGame {
     ui: UIContext,
     depth: i32,
     time_of_day: &'static str,
+    turn: u32,
     rng: RandomNumberGenerator,
     mode: GameMode,
     meter: Option<TensionMeter>,
@@ -45,20 +49,22 @@ impl LurhookGame {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let fish_types = data::load_fish_types(path)?;
         let mut map = generate(seed)?;
-        let fish = spawn_fish(&mut map, &fish_types)?;
+        let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         Ok(Self {
             player: Player {
                 pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
                 hp: 10,
                 line: 100,
+                bait_bonus: 0.0,
                 inventory: Vec::new(),
             },
             map,
-            fishes: vec![fish],
+            fishes,
             fish_types,
             ui: UIContext::default(),
             depth: 0,
-            time_of_day: "Dawn",
+            time_of_day: TIMES[0],
+            turn: 0,
             rng: RandomNumberGenerator::seeded(seed),
             mode: GameMode::Exploring,
             meter: None,
@@ -75,6 +81,12 @@ impl LurhookGame {
         y = y.clamp(0, self.map.height as i32 - VIEW_HEIGHT);
         (x, y)
     }
+
+    fn advance_time(&mut self) {
+        self.turn += 1;
+        let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
+        self.time_of_day = TIMES[idx as usize];
+    }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
         let mut x = self.player.pos.x + delta.x;
@@ -83,6 +95,23 @@ impl LurhookGame {
         y = y.clamp(0, self.map.height as i32 - 1);
         self.player.pos.x = x;
         self.player.pos.y = y;
+    }
+
+    fn score(&self) -> i32 {
+        self
+            .player
+            .inventory
+            .iter()
+            .map(|f| ((1.0 / f.rarity) * 10.0) as i32)
+            .sum()
+    }
+
+    fn end_run(&mut self) {
+        let score = self.score();
+        self.ui
+            .add_log(&format!("Run ended! Final score: {}", score))
+            .ok();
+        self.mode = GameMode::End { score };
     }
 
     /// Handles input and updates the player position accordingly.
@@ -104,6 +133,10 @@ impl LurhookGame {
             }
             if key == PageDown {
                 self.ui.scroll_down();
+                return;
+            }
+            if key == Return && matches!(self.mode, GameMode::Exploring) {
+                self.end_run();
                 return;
             }
             let delta = match key {
@@ -145,7 +178,13 @@ impl LurhookGame {
             }
 
             if self.meter.is_none() {
-                let bite = self.rng.range(0, 100) < 50;
+                let tile = if let Some(f) = self.fishes.first() {
+                    self.map.tiles[self.map.idx(f.position)]
+                } else {
+                    TileKind::ShallowWater
+                };
+                let chance = fishing::bite_probability(tile, self.player.bait_bonus);
+                let bite = self.rng.range(0.0, 1.0) < chance;
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
                     if let Some(f) = self.fishes.first() {
@@ -290,12 +329,19 @@ impl Default for LurhookGame {
 
 impl GameState for LurhookGame {
     fn tick(&mut self, ctx: &mut BTerm) {
+        self.advance_time();
         self.handle_input(ctx);
         match self.mode {
             GameMode::Exploring => {
                 update_fish(&self.map, &mut self.fishes).expect("fish update");
             }
             GameMode::Fishing { .. } => self.update_fishing(),
+            GameMode::End { score } => {
+                ctx.cls();
+                ctx.print_centered(12, "Run Complete!");
+                ctx.print_centered(13, format!("Final score: {}", score));
+                return;
+            }
         }
         ctx.cls();
         self.draw_map(ctx);
@@ -365,9 +411,10 @@ mod tests {
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.player.hp, 10);
         assert_eq!(game.player.line, 100);
+        assert_eq!(game.player.bait_bonus, 0.0);
         assert_eq!(game.map.width, 120);
         assert_eq!(game.map.height, 80);
-        assert_eq!(game.fishes.len(), 1);
+        assert_eq!(game.fishes.len(), 5);
         let fish = &game.fishes[0];
         let tile = game.map.tiles[game.map.idx(fish.position)];
         assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
@@ -486,5 +533,37 @@ mod tests {
         game.player.line = 0;
         game.cast();
         assert!(matches!(game.mode, GameMode::Exploring));
+    }
+
+    #[test]
+    fn day_night_cycle_progresses() {
+        let mut game = LurhookGame::default();
+        assert_eq!(game.time_of_day, "Dawn");
+        for _ in 0..super::TIME_SEGMENT_TURNS {
+            game.advance_time();
+        }
+        assert_eq!(game.time_of_day, "Day");
+        for _ in 0..super::TIME_SEGMENT_TURNS {
+            game.advance_time();
+        }
+        assert_eq!(game.time_of_day, "Dusk");
+    }
+
+    #[test]
+    fn score_calculation() {
+        let mut game = LurhookGame::default();
+        let fish = game.fish_types[0].clone();
+        game.player.inventory.push(fish.clone());
+        let expected = ((1.0 / fish.rarity) * 10.0) as i32;
+        assert_eq!(game.score(), expected);
+    }
+
+    #[test]
+    fn end_run_sets_mode() {
+        let mut game = LurhookGame::default();
+        let fish = game.fish_types[0].clone();
+        game.player.inventory.push(fish);
+        game.end_run();
+        assert!(matches!(game.mode, GameMode::End { .. }));
     }
 }

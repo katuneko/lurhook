@@ -1,5 +1,7 @@
 //! Fishing minigame utilities.
 
+use mapgen::TileKind;
+
 /// Result of a [`TensionMeter::update`] call.
 #[derive(Debug, PartialEq, Eq)]
 pub enum MeterState {
@@ -27,7 +29,12 @@ pub struct TensionMeter {
 impl TensionMeter {
     /// Creates a new [`TensionMeter`] with the given fish strength.
     pub fn new(strength: i32) -> Self {
-        Self { tension: 0, max_tension: 100, duration: 5, strength }
+        Self {
+            tension: 0,
+            max_tension: 100,
+            duration: 5,
+            strength,
+        }
     }
 
     /// Updates internal tension.
@@ -56,6 +63,18 @@ impl TensionMeter {
     pub fn draw(&self) {
         println!("Tension meter: {}/{}", self.tension, self.max_tension);
     }
+}
+
+/// Calculates bite probability based on environment and gear.
+///
+/// `tile` determines the water depth; `bait_bonus` adds a flat bonus.
+pub fn bite_probability(tile: TileKind, bait_bonus: f32) -> f32 {
+    let depth_bonus = match tile {
+        TileKind::ShallowWater => 0.1,
+        TileKind::DeepWater => 0.3,
+        TileKind::Land => 0.0,
+    };
+    (0.3 + depth_bonus + bait_bonus).clamp(0.0, 1.0)
 }
 
 impl Default for TensionMeter {
@@ -89,13 +108,19 @@ mod tests {
 
     #[test]
     fn breaks_when_exceeding_max() {
-        let mut meter = TensionMeter { max_tension: 5, ..TensionMeter::new(10) };
+        let mut meter = TensionMeter {
+            max_tension: 5,
+            ..TensionMeter::new(10)
+        };
         assert_eq!(meter.update(false), MeterState::Broken);
     }
 
     #[test]
     fn succeeds_after_duration() {
-        let mut meter = TensionMeter { duration: 1, ..TensionMeter::new(1) };
+        let mut meter = TensionMeter {
+            duration: 1,
+            ..TensionMeter::new(1)
+        };
         assert_eq!(meter.update(false), MeterState::Success);
     }
 
@@ -114,5 +139,20 @@ mod tests {
         let meter = TensionMeter::default();
         assert_eq!(meter.strength, 5);
         assert_eq!(meter.max_tension, 100);
+    }
+
+    #[test]
+    fn deep_water_increases_bite_chance() {
+        let shallow = bite_probability(TileKind::ShallowWater, 0.0);
+        let deep = bite_probability(TileKind::DeepWater, 0.0);
+        assert!(deep > shallow);
+    }
+
+    #[test]
+    fn bait_bonus_applied() {
+        let base = bite_probability(TileKind::Land, 0.0);
+        let bonus = bite_probability(TileKind::Land, 0.2);
+        assert!(bonus > base);
+        assert!(bonus <= 1.0);
     }
 }
