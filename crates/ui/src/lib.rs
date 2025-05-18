@@ -1,18 +1,47 @@
 //! UI context stubs.
 use bracket_lib::prelude::BTerm;
+
+/// UI layout type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UILayout {
+    /// Standard exploration layout.
+    Standard,
+    /// Layout used during the fishing mini game.
+    Fishing,
+}
 use common::GameResult;
 
 const LOG_Y: i32 = 17;
 const LOG_WINDOW: i32 = 8;
+const TENSION_Y: i32 = LOG_Y - 1;
 
 /// Basic UI context for logging and redraw requests.
-#[derive(Default)]
 pub struct UIContext {
     logs: Vec<String>,
     scroll: usize,
+    layout: UILayout,
+}
+
+impl Default for UIContext {
+    fn default() -> Self {
+        Self {
+            logs: Vec::new(),
+            scroll: 0,
+            layout: UILayout::Standard,
+        }
+    }
 }
 
 impl UIContext {
+    /// Sets the current layout.
+    pub fn set_layout(&mut self, layout: UILayout) {
+        self.layout = layout;
+    }
+
+    /// Returns the current layout.
+    pub fn layout(&self) -> UILayout {
+        self.layout
+    }
     /// Adds a message to the log queue.
     pub fn add_log(&mut self, msg: &str) -> GameResult<()> {
         self.logs.push(msg.to_string());
@@ -42,13 +71,14 @@ impl UIContext {
 
     /// Draws log window to the screen.
     pub fn draw_logs(&self, ctx: &mut BTerm) -> GameResult<()> {
+        let log_y = if self.layout == UILayout::Fishing { LOG_Y + 1 } else { LOG_Y };
         let start = self
             .logs
             .len()
             .saturating_sub(LOG_WINDOW as usize + self.scroll);
         let end = std::cmp::min(start + LOG_WINDOW as usize, self.logs.len());
         for (i, line) in self.logs[start..end].iter().enumerate() {
-            ctx.print(0, LOG_Y + i as i32, line);
+            ctx.print(0, log_y + i as i32, line);
         }
         Ok(())
     }
@@ -62,21 +92,29 @@ impl UIContext {
         depth: i32,
         time: &str,
     ) -> GameResult<()> {
-        ctx.print(60, LOG_Y, &format!("HP: {}", hp));
-        ctx.print(60, LOG_Y + 1, &format!("Line: {}", line));
-        ctx.print(60, LOG_Y + 2, &format!("Depth: {}m", depth));
-        ctx.print(60, LOG_Y + 3, &format!("Time: {}", time));
+        let base_y = if self.layout == UILayout::Fishing { LOG_Y + 1 } else { LOG_Y };
+        ctx.print(60, base_y, &format!("HP: {}", hp));
+        ctx.print(60, base_y + 1, &format!("Line: {}", line));
+        ctx.print(60, base_y + 2, &format!("Depth: {}m", depth));
+        ctx.print(60, base_y + 3, &format!("Time: {}", time));
         Ok(())
     }
 
     /// Draws a simple tension bar using ASCII.
-    pub fn draw_tension(&self, tension: i32, max: i32) -> GameResult<()> {
-        let width = 10;
-        let filled = ((tension as f32 / max as f32) * width as f32).round() as usize;
-        let bar = format!("[{}{}]", "#".repeat(filled), "-".repeat(width - filled));
-        println!("Tension {}", bar);
+    pub fn draw_tension(&self, ctx: &mut BTerm, tension: i32, max: i32) -> GameResult<()> {
+        if self.layout != UILayout::Fishing {
+            return Ok(());
+        }
+        let bar = tension_bar_string(tension, max);
+        ctx.print(0, TENSION_Y, bar);
         Ok(())
     }
+}
+
+fn tension_bar_string(tension: i32, max: i32) -> String {
+    let width = 10;
+    let filled = ((tension as f32 / max as f32) * width as f32).round() as usize;
+    format!("[{}{}]", "#".repeat(filled), "-".repeat(width - filled))
 }
 
 pub fn init() {
@@ -103,9 +141,17 @@ mod tests {
     }
 
     #[test]
-    fn draw_tension_bar() {
-        let ui = UIContext::default();
-        assert!(ui.draw_tension(5, 10).is_ok());
+    fn tension_bar_format() {
+        let bar = super::tension_bar_string(5, 10);
+        assert_eq!(bar, "[#####-----]");
+    }
+
+    #[test]
+    fn layout_switching() {
+        let mut ui = UIContext::default();
+        assert_eq!(ui.layout(), UILayout::Standard);
+        ui.set_layout(UILayout::Fishing);
+        assert_eq!(ui.layout(), UILayout::Fishing);
     }
 
     #[test]
