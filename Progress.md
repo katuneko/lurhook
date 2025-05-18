@@ -1,7 +1,7 @@
-# Lurhook 開発タスクリスト (GitLab 用)
+# Lurhook 開発タスクリスト (GitHub 用)
 
 > **目的**: `docs/requirements.md` と `docs/designs.md` に基づき、ローカル開発 (オンプレ環境、`cargo run`) を段階的に進めながら品質を結合ポイントで固めていく。
-> **管理方法**: 各項目は GitLab Issue として登録し、以下のチェックリストをコピーして進捗を管理してください。
+> **管理方法**: 各項目は GitHub Issue として登録し、以下のチェックリストをコピーして進捗を管理してください。
 
 ---
 
@@ -27,7 +27,7 @@
 
 * [x] Rust 1.78+ のインストール (`rustup`)
 * [x] リポジトリをクローンし、`cargo run` が "Welcome to Lurhook!" を表示することを確認
-* [x] `.gitlab-ci.yml` を作成し、Ubuntu 最新版で以下を実行
+* [x] `.github/workflows/ci.yml` を作成し、Ubuntu 最新版で以下を実行
 
   * `cargo clippy -- -D warnings`
   * `cargo test --all --offline`
@@ -128,7 +128,7 @@
 * [ ] 各クレートでユニットテストを追加し、80%+ カバレッジ
 * [ ] ゴールデンマスター & スナップショットテスト導入
 * [x] スナップショットテストの改行差異を吸収しクロスプラットフォーム化
-* [ ] GitLab CI を Linux/Windows/macOS + WASM マトリクスに拡張
+* [ ] GitHub Actions を Linux/Windows/macOS + WASM マトリクスに拡張
 * [ ] `cargo clippy -- -D warnings` を CI に組み込み、パフォーマンス回帰テスト(任意)
 
 </details>
@@ -137,10 +137,10 @@
 
 ## 進め方ガイド
 
-1. **Issue 化**: 上記チェック項目を GitLab Issue として登録し、ラベル `foundation` / `world` / `fishing` / `persistence` を付与。
-2. **マイルストーン設定**: M0～M3 を GitLab Milestone に登録し、関連 Issue を紐付ける。
-3. **ブランチ戦略**: Milestone ごとに `feature/m0-*`, `feature/m1-*` などのプレフィックスを付け、`main` ブランチへ MR (Merge Request) ベースで統合。
-4. **レビュー & CI**: MR 作成時に CI が走り、グリーンになればレビュー。レビュー完了後にマージ。
+1. **Issue 化**: 上記チェック項目を GitHub Issue として登録し、ラベル `foundation` / `world` / `fishing` / `persistence` を付与。
+2. **マイルストーン設定**: M0～M3 を GitHub Milestone に登録し、関連 Issue を紐付ける。
+3. **ブランチ戦略**: Milestone ごとに `feature/m0-*`, `feature/m1-*` などのプレフィックスを付け、`main` ブランチへ PR (Pull Request) ベースで統合。
+4. **レビュー & CI**: PR 作成時に CI が走り、グリーンになればレビュー。レビュー完了後にマージ。
 5. **進捗更新**: Issue のチェックボックスを更新し、完了したら `Closed`。
 
 > **メモ**: 本 `task.md` は進捗管理のハブとして README とは分けてリポジトリ直下に配置し、随時更新してください。
