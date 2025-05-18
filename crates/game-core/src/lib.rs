@@ -19,6 +19,7 @@ use data;
 enum GameMode {
     Exploring,
     Fishing { wait: u8 },
+    End { score: i32 },
 }
 
 pub use types::Player;
@@ -85,6 +86,23 @@ impl LurhookGame {
         self.player.pos.y = y;
     }
 
+    fn score(&self) -> i32 {
+        self
+            .player
+            .inventory
+            .iter()
+            .map(|f| ((1.0 / f.rarity) * 10.0) as i32)
+            .sum()
+    }
+
+    fn end_run(&mut self) {
+        let score = self.score();
+        self.ui
+            .add_log(&format!("Run ended! Final score: {}", score))
+            .ok();
+        self.mode = GameMode::End { score };
+    }
+
     /// Handles input and updates the player position accordingly.
     fn handle_input(&mut self, ctx: &mut BTerm) {
         self.reeling = false;
@@ -104,6 +122,10 @@ impl LurhookGame {
             }
             if key == PageDown {
                 self.ui.scroll_down();
+                return;
+            }
+            if key == Return && matches!(self.mode, GameMode::Exploring) {
+                self.end_run();
                 return;
             }
             let delta = match key {
@@ -290,6 +312,12 @@ impl GameState for LurhookGame {
                 update_fish(&self.map, &mut self.fishes).expect("fish update");
             }
             GameMode::Fishing { .. } => self.update_fishing(),
+            GameMode::End { score } => {
+                ctx.cls();
+                ctx.print_centered(12, "Run Complete!");
+                ctx.print_centered(13, format!("Final score: {}", score));
+                return;
+            }
         }
         ctx.cls();
         self.draw_map(ctx);
@@ -457,5 +485,23 @@ mod tests {
         let cam = game.camera();
         assert!(cam.0 <= game.map.width as i32 - super::VIEW_WIDTH);
         assert!(cam.1 <= game.map.height as i32 - super::VIEW_HEIGHT);
+    }
+
+    #[test]
+    fn score_calculation() {
+        let mut game = LurhookGame::default();
+        let fish = game.fish_types[0].clone();
+        game.player.inventory.push(fish.clone());
+        let expected = ((1.0 / fish.rarity) * 10.0) as i32;
+        assert_eq!(game.score(), expected);
+    }
+
+    #[test]
+    fn end_run_sets_mode() {
+        let mut game = LurhookGame::default();
+        let fish = game.fish_types[0].clone();
+        game.player.inventory.push(fish);
+        game.end_run();
+        assert!(matches!(game.mode, GameMode::End { .. }));
     }
 }
