@@ -9,7 +9,7 @@ use ecology::update_fish;
 use ecology::{spawn_fish, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
-use ui::{init as ui_init, UIContext};
+use ui::{init as ui_init, UIContext, UILayout};
 
 /// Current game mode.
 enum GameMode {
@@ -106,6 +106,7 @@ impl LurhookGame {
 
     fn cast(&mut self) {
         self.ui.add_log("Casting...").ok();
+        self.ui.set_layout(UILayout::Fishing);
         self.mode = GameMode::Fishing { wait: 2 };
     }
 
@@ -124,6 +125,7 @@ impl LurhookGame {
                 } else {
                     self.ui.add_log("The fish got away...").ok();
                     self.mode = GameMode::Exploring;
+                    self.ui.set_layout(UILayout::Standard);
                 }
                 return;
             }
@@ -132,7 +134,6 @@ impl LurhookGame {
                 use fishing::MeterState;
                 match meter.update(self.reeling) {
                     MeterState::Ongoing => {
-                        self.ui.draw_tension(meter.tension, meter.max_tension).ok();
                         self.meter = Some(meter);
                     }
                     MeterState::Success => {
@@ -141,10 +142,12 @@ impl LurhookGame {
                             self.ui.add_log("Caught a fish!").ok();
                         }
                         self.mode = GameMode::Exploring;
+                        self.ui.set_layout(UILayout::Standard);
                     }
                     MeterState::Broken => {
                         self.ui.add_log("Line snapped!").ok();
                         self.mode = GameMode::Exploring;
+                        self.ui.set_layout(UILayout::Standard);
                     }
                 }
             }
@@ -194,7 +197,7 @@ impl GameState for LurhookGame {
         self.draw_fish(ctx);
         ctx.print(self.player.pos.x, self.player.pos.y, "@");
         if let Some(m) = &self.meter {
-            self.ui.draw_tension(m.tension, m.max_tension).ok();
+            self.ui.draw_tension(ctx, m.tension, m.max_tension).ok();
         }
         self.ui.draw_logs(ctx).ok();
         self.ui
@@ -292,6 +295,7 @@ mod tests {
         let mut game = LurhookGame::default();
         game.cast();
         assert!(matches!(game.mode, GameMode::Fishing { .. }));
+        assert_eq!(game.ui.layout(), UILayout::Fishing);
     }
 
     #[test]
@@ -307,5 +311,6 @@ mod tests {
         });
         game.update_fishing();
         assert!(matches!(game.mode, GameMode::Exploring));
+        assert_eq!(game.ui.layout(), UILayout::Standard);
     }
 }
