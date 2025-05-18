@@ -951,6 +951,7 @@ dependencies = [
 name = "mapgen"
 version = "0.1.0"
 dependencies = [
+ "bracket-lib",
  "common",
 ]
 

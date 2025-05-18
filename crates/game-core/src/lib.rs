@@ -7,26 +7,34 @@ use bracket_lib::prelude::*;
 use common::GameResult;
 use ecology::spawn_fish;
 use fishing::{init as fishing_init, TensionMeter};
-use mapgen::generate;
+use mapgen::{generate, Map, TileKind};
 use ui::{init as ui_init, UIContext};
 
 pub use types::Player;
 
-const SCREEN_WIDTH: i32 = 80;
-const SCREEN_HEIGHT: i32 = 25;
 
 /// Basic game state implementing [`GameState`].
 pub struct LurhookGame {
     player: Player,
+    map: Map,
 }
 
 impl LurhookGame {
+    /// Creates a new game with a generated map.
+    pub fn new(seed: u64) -> GameResult<Self> {
+        Ok(Self {
+            player: Player {
+                pos: common::Point::new(40, 12),
+            },
+            map: generate(seed)?,
+        })
+    }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
         let mut x = self.player.pos.x + delta.x;
         let mut y = self.player.pos.y + delta.y;
-        x = x.clamp(0, SCREEN_WIDTH - 1);
-        y = y.clamp(0, SCREEN_HEIGHT - 1);
+        x = x.clamp(0, self.map.width as i32 - 1);
+        y = y.clamp(0, self.map.height as i32 - 1);
         self.player.pos.x = x;
         self.player.pos.y = y;
     }
@@ -51,15 +59,26 @@ impl LurhookGame {
             }
         }
     }
+
+    /// Draws the map to the screen.
+    fn draw_map(&self, ctx: &mut BTerm) {
+        for y in 0..self.map.height {
+            for x in 0..self.map.width {
+                let idx = self.map.idx(common::Point::new(x as i32, y as i32));
+                let glyph = match self.map.tiles[idx] {
+                    TileKind::Land => '.',
+                    TileKind::ShallowWater => '~',
+                    TileKind::DeepWater => '≈',
+                };
+                ctx.print(x as i32, y as i32, glyph);
+            }
+        }
+    }
 }
 
 impl Default for LurhookGame {
     fn default() -> Self {
-        Self {
-            player: Player {
-                pos: common::Point::new(40, 12),
-            },
-        }
+        Self::new(0).expect("game")
     }
 }
 
@@ -67,6 +86,7 @@ impl GameState for LurhookGame {
     fn tick(&mut self, ctx: &mut BTerm) {
         self.handle_input(ctx);
         ctx.cls();
+        self.draw_map(ctx);
         ctx.print(self.player.pos.x, self.player.pos.y, "@");
     }
 }
@@ -79,7 +99,7 @@ pub fn run() -> BError {
     let context = BTermBuilder::simple(80, 25)?
         .with_title("Lurhook")
         .build()?;
-    let gs = LurhookGame::default();
+    let gs = LurhookGame::new(0).expect("init game");
     main_loop(context, gs)
 }
 
@@ -114,6 +134,8 @@ mod tests {
     fn default_player_position() {
         let game = LurhookGame::default();
         assert_eq!(game.player.pos, common::Point::new(40, 12));
+        assert_eq!(game.map.width, 80);
+        assert_eq!(game.map.height, 25);
     }
 
     #[test]
@@ -123,11 +145,11 @@ mod tests {
         game.try_move(common::Point::new(-1, -1));
         assert_eq!(game.player.pos, common::Point::new(0, 0));
 
-        game.player.pos = common::Point::new(SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
+        game.player.pos = common::Point::new(game.map.width as i32 - 1, game.map.height as i32 - 1);
         game.try_move(common::Point::new(1, 1));
         assert_eq!(
             game.player.pos,
-            common::Point::new(SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1)
+            common::Point::new(game.map.width as i32 - 1, game.map.height as i32 - 1)
         );
     }
 
