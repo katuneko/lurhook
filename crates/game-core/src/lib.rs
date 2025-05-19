@@ -2,6 +2,7 @@
 
 mod types;
 mod input;
+mod app;
 
 use bracket_lib::prelude::*;
 
@@ -21,8 +22,10 @@ const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 const SAVE_PATH: &str = "savegame.ron";
 const CONFIG_PATH: &str = "lurhook.toml";
 use input::InputConfig;
+pub use app::LurhookApp;
 
 /// Current game mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GameMode {
     Exploring,
     Fishing { wait: u8 },
@@ -84,6 +87,11 @@ impl LurhookGame {
         })
     }
 
+    /// Returns the current game mode.
+    pub fn mode(&self) -> GameMode {
+        self.mode
+    }
+
     fn camera(&self) -> (i32, i32) {
         let half_w = VIEW_WIDTH / 2;
         let half_h = VIEW_HEIGHT / 2;
@@ -138,6 +146,14 @@ impl LurhookGame {
     fn handle_input(&mut self, ctx: &mut BTerm) {
         self.reeling = false;
         if let Some(key) = ctx.key {
+            self.handle_input_key(Some(key), ctx);
+        }
+    }
+
+    /// Handles an input key without relying on BTerm.
+    fn handle_input_key(&mut self, key: Option<VirtualKeyCode>, ctx: &mut BTerm) {
+        self.reeling = false;
+        if let Some(key) = key {
             use VirtualKeyCode::*;
             if key == self.input.cast && matches!(self.mode, GameMode::Exploring) {
                 self.cast();
@@ -437,7 +453,7 @@ pub fn run() -> BError {
     let context = BTermBuilder::simple(80, 25)?
         .with_title("Lurhook")
         .build()?;
-    let gs = LurhookGame::new(0).expect("init game");
+    let gs = app::LurhookApp::new();
     main_loop(context, gs)
 }
 
