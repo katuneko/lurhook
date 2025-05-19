@@ -16,6 +16,7 @@ use ui::{init as ui_init, UIContext, UILayout};
 const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
+const MAX_HUNGER: i32 = 100;
 const TIME_SEGMENT_TURNS: u32 = 10;
 const TIDE_TURNS: u32 = 20;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
@@ -96,6 +97,7 @@ impl LurhookGame {
             player: Player {
                 pos: start,
                 hp: 10,
+                hunger: MAX_HUNGER,
                 line: 100,
                 bait_bonus: equipped.bite_bonus,
                 tension_bonus: equipped.tension_bonus,
@@ -135,6 +137,14 @@ impl LurhookGame {
         self.turn += 1;
         let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
         self.time_of_day = TIMES[idx as usize];
+        if self.player.hunger > 0 {
+            self.player.hunger -= 1;
+            if self.player.hunger == 0 {
+                self.ui.add_log("You are starving!").ok();
+            }
+        } else if self.player.hp > 0 {
+            self.player.hp -= 1;
+        }
     }
 
     fn current_drift(&self) -> common::Point {
@@ -383,8 +393,12 @@ impl LurhookGame {
     /// Saves a minimal game state to a RON-like file at `path`.
     pub fn save_game(&self, path: &str) -> GameResult<()> {
         let content = format!(
-            "(player:(pos:(x:{}, y:{}), hp:{}), time_of_day:\"{}\")",
-            self.player.pos.x, self.player.pos.y, self.player.hp, self.time_of_day
+            "(player:(pos:(x:{}, y:{}), hp:{}, hunger:{}), time_of_day:\"{}\")",
+            self.player.pos.x,
+            self.player.pos.y,
+            self.player.hp,
+            self.player.hunger,
+            self.time_of_day
         );
         std::fs::write(path, content)?;
         Ok(())
@@ -427,6 +441,7 @@ impl LurhookGame {
         game.player.pos.x = parse_i32(&data, "x:")?;
         game.player.pos.y = parse_i32(&data, "y:")?;
         game.player.hp = parse_i32(&data, "hp:")?;
+        game.player.hunger = parse_i32(&data, "hunger:")?;
         let tod = parse_str(&data, "time_of_day:")?;
         game.time_of_day = match tod {
             "Dawn" => "Dawn",
@@ -489,6 +504,7 @@ impl GameState for LurhookGame {
                 ctx,
                 self.player.hp,
                 self.player.line,
+                self.player.hunger,
                 self.depth,
                 self.time_of_day,
             )
@@ -682,6 +698,23 @@ mod tests {
             game.advance_time();
         }
         assert_eq!(game.time_of_day, "Dusk");
+    }
+
+    #[test]
+    fn hunger_ticks_down() {
+        let mut game = LurhookGame::default();
+        let start = game.player.hunger;
+        game.advance_time();
+        assert_eq!(game.player.hunger, start - 1);
+    }
+
+    #[test]
+    fn starvation_damages_hp() {
+        let mut game = LurhookGame::default();
+        game.player.hunger = 0;
+        let hp_before = game.player.hp;
+        game.advance_time();
+        assert_eq!(game.player.hp, hp_before - 1);
     }
 
     #[cfg(not(target_arch = "wasm32"))]

@@ -126,6 +126,7 @@ impl UIContext {
         ctx: &mut BTerm,
         hp: i32,
         line: i32,
+        hunger: i32,
         depth: i32,
         time: &str,
     ) -> GameResult<()> {
@@ -133,7 +134,17 @@ impl UIContext {
         ctx.print(60, base_y, format!("HP: {}", hp));
         ctx.print(60, base_y + 1, format!("Line: {}", line));
         ctx.print(60, base_y + 2, format!("Depth: {}m", depth));
-        ctx.print(60, base_y + 3, format!("Time: {}", time));
+        let bar = hunger_bar_string(hunger, 100);
+        use bracket_lib::prelude::*;
+        let color = if hunger > 60 {
+            GREEN
+        } else if hunger > 30 {
+            YELLOW
+        } else {
+            RED
+        };
+        ctx.print_color(60, base_y + 3, color, RGB::named(BLACK), format!("Food: {}", bar));
+        ctx.print(60, base_y + 4, format!("Time: {}", time));
         Ok(())
     }
 
@@ -168,6 +179,10 @@ fn tension_bar_string(tension: i32, max: i32) -> String {
     let width = 10;
     let filled = ((tension as f32 / max as f32) * width as f32).round() as usize;
     format!("[{}{}]", "#".repeat(filled), "-".repeat(width - filled))
+}
+
+fn hunger_bar_string(hunger: i32, max: i32) -> String {
+    tension_bar_string(hunger, max)
 }
 
 pub fn init() {
@@ -211,6 +226,11 @@ mod tests {
     fn tension_bar_zero_and_full() {
         assert_eq!(super::tension_bar_string(0, 10), "[----------]");
         assert_eq!(super::tension_bar_string(10, 10), "[##########]");
+    }
+
+    #[test]
+    fn hunger_bar_alias() {
+        assert_eq!(super::hunger_bar_string(5, 10), "[#####-----]");
     }
 
     #[test]
