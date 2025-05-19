@@ -27,7 +27,7 @@
 * [x] **Schooling Behavior:** Implemented a simple group AI so fish of the same species move toward each other when nearby, creating loose schools.
 * [x] **Time-of-Day Activity:** Fish now move faster at Night, tying their behavior to the day-night cycle. Spawning is unchanged for now but the groundwork is in place for time-based variations.
 * [x] **Reliable Fish Spawning:** The spawning algorithm now retries until the requested number of fish is placed, preventing intermittent test failures.
-* [ ] **Tidal Currents Effect:** Simulate ocean currents that influence fish movement patterns. For instance, implement a subtle drift where, during certain periods (tides), all fish positions shift or bias in one direction (and perhaps back again with ebb/flow). This environmental effect would add realism and challenge – the player might find fish have moved with the current, making positioning and timing more important.
+* [x] **Tidal Currents Effect:** Simulate ocean currents that influence fish movement patterns. For instance, implement a subtle drift where, during certain periods (tides), all fish positions shift or bias in one direction (and perhaps back again with ebb/flow). This environmental effect adds realism and challenge – the player might find fish have moved with the current, making positioning and timing more important.
 
 ## UI/UX Improvements
 

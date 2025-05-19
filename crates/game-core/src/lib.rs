@@ -16,6 +16,7 @@ const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
 const TIME_SEGMENT_TURNS: u32 = 10;
+const TIDE_TURNS: u32 = 20;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 const SAVE_PATH: &str = "savegame.ron";
 const CONFIG_PATH: &str = "lurhook.toml";
@@ -89,6 +90,14 @@ impl LurhookGame {
         self.turn += 1;
         let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
         self.time_of_day = TIMES[idx as usize];
+    }
+
+    fn current_drift(&self) -> common::Point {
+        if (self.turn / TIDE_TURNS) % 2 == 0 {
+            common::Point::new(1, 0)
+        } else {
+            common::Point::new(-1, 0)
+        }
     }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
@@ -360,11 +369,13 @@ impl GameState for LurhookGame {
         self.handle_input(ctx);
         match self.mode {
             GameMode::Exploring => {
+                let drift = self.current_drift();
                 update_fish(
                     &self.map,
                     &mut self.fishes,
                     &mut self.rng,
                     self.time_of_day,
+                    drift,
                 )
                 .expect("fish update");
             }
