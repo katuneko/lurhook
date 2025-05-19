@@ -12,7 +12,6 @@ pub enum UILayout {
     Inventory,
 }
 use common::GameResult;
-use data;
 
 const LOG_Y: i32 = 17;
 const LOG_WINDOW: i32 = 8;
