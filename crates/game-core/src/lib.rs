@@ -56,6 +56,7 @@ pub struct LurhookGame {
     meter: Option<TensionMeter>,
     reeling: bool,
     palette: ui::ColorPalette,
+    storm_turns: u8,
 }
 
 impl LurhookGame {
@@ -122,6 +123,7 @@ impl LurhookGame {
             meter: None,
             reeling: false,
             palette,
+            storm_turns: 0,
         };
         game.ui.set_layout(ui::UILayout::Help);
         Ok(game)
@@ -143,6 +145,9 @@ impl LurhookGame {
     }
 
     fn advance_time(&mut self) {
+        if self.storm_turns > 0 {
+            self.storm_turns -= 1;
+        }
         self.turn += 1;
         let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
         self.time_of_day = TIMES[idx as usize];
@@ -153,6 +158,28 @@ impl LurhookGame {
             }
         } else if self.player.hp > 0 {
             self.player.hp -= 1;
+        }
+        let idx = self.map.idx(self.player.pos);
+        let tile = self.map.tiles[idx];
+        match tile {
+            TileKind::Land => {
+                if self.rng.range(0, 100) < 10 {
+                    if self.rng.range(0, 2) == 0 && self.player.hp < MAX_HP {
+                        self.player.hp += 1;
+                        self.ui.add_log("You rest on the shore.").ok();
+                    } else {
+                        self.player.canned_food += 1;
+                        self.ui.add_log("You found canned food!").ok();
+                    }
+                }
+            }
+            TileKind::DeepWater => {
+                if self.rng.range(0, 100) < 5 {
+                    self.storm_turns = 5;
+                    self.ui.add_log("A storm reduces visibility!").ok();
+                }
+            }
+            _ => {}
         }
     }
 
@@ -167,7 +194,14 @@ impl LurhookGame {
     fn visibility_radius(&self) -> i32 {
         let idx = self.map.idx(self.player.pos);
         match self.map.tiles[idx] {
-            TileKind::DeepWater => 5,
+            TileKind::DeepWater => {
+                let base = 5;
+                if self.storm_turns > 0 {
+                    base.min(3)
+                } else {
+                    base
+                }
+            }
             _ => i32::MAX,
         }
     }
@@ -1067,5 +1101,34 @@ mod tests {
         game.eat_canned_food();
         assert!(game.player.hunger > 50);
         assert_eq!(game.player.canned_food, 0);
+    }
+
+    #[test]
+    fn land_event_triggers() {
+        let mut game = LurhookGame::new(8).unwrap();
+        game.map.tiles.fill(TileKind::Land);
+        let hp = game.player.hp;
+        let food = game.player.canned_food;
+        game.advance_time();
+        assert!(game.player.hp > hp || game.player.canned_food > food);
+    }
+
+    #[test]
+    fn storm_event_sets_turns() {
+        let mut game = LurhookGame::new(8).unwrap();
+        game.map.tiles.fill(TileKind::DeepWater);
+        game.player.pos = common::Point::new(0, 0);
+        game.advance_time();
+        assert!(game.storm_turns > 0);
+    }
+
+    #[test]
+    fn visibility_reduced_during_storm() {
+        let mut game = LurhookGame::default();
+        game.map.tiles.fill(TileKind::DeepWater);
+        game.player.pos = common::Point::new(0, 0);
+        game.storm_turns = 1;
+        assert!(!game.is_visible(common::Point::new(6, 0)));
+        assert!(game.is_visible(common::Point::new(3, 0)));
     }
 }
