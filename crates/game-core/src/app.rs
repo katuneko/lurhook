@@ -3,7 +3,7 @@ use bracket_lib::prelude::*;
 
 pub enum AppState {
     Menu,
-    Running(LurhookGame),
+    Running(Box<LurhookGame>),
     Summary(i32),
 }
 
@@ -22,7 +22,7 @@ impl LurhookApp {
         match &mut self.state {
             AppState::Menu => match key {
                 Some(Return) => {
-                    self.state = AppState::Running(LurhookGame::default());
+                    self.state = AppState::Running(Box::default());
                     false
                 }
                 Some(Q) => true,
@@ -44,6 +44,12 @@ impl LurhookApp {
                 _ => false,
             },
         }
+    }
+}
+
+impl Default for LurhookApp {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
