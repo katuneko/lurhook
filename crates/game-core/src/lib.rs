@@ -6,7 +6,7 @@ mod types;
 
 use bracket_lib::prelude::*;
 
-use common::{GameError, GameResult};
+use common::{GameError, GameResult, Point};
 use ecology::update_fish;
 use ecology::{spawn_fish_population, Fish};
 use fishing::{init as fishing_init, TensionMeter};
@@ -33,6 +33,7 @@ use input::InputConfig;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GameMode {
     Exploring,
+    Aiming { target: common::Point },
     Fishing { wait: u8 },
     End { score: i32 },
 }
@@ -211,9 +212,18 @@ impl LurhookGame {
         self.reeling = false;
         if let Some(key) = key {
             use VirtualKeyCode::*;
-            if key == self.input.cast && matches!(self.mode, GameMode::Exploring) {
-                self.cast();
-                return;
+            if key == self.input.cast {
+                match &mut self.mode {
+                    GameMode::Exploring => {
+                        self.cast();
+                        return;
+                    }
+                    GameMode::Aiming { .. } => {
+                        self.confirm_cast();
+                        return;
+                    }
+                    _ => {}
+                }
             }
             if key == self.input.reel && matches!(self.mode, GameMode::Fishing { .. }) {
                 self.reeling = true;
@@ -264,18 +274,27 @@ impl LurhookGame {
                 return;
             }
             let delta = match key {
-                k if k == Left || k == self.input.left => common::Point::new(-1, 0),
-                k if k == Right || k == self.input.right => common::Point::new(1, 0),
-                k if k == Up || k == self.input.up => common::Point::new(0, -1),
-                k if k == Down || k == self.input.down => common::Point::new(0, 1),
-                k if k == self.input.up_left => common::Point::new(-1, -1),
-                k if k == self.input.up_right => common::Point::new(1, -1),
-                k if k == self.input.down_left => common::Point::new(-1, 1),
-                k if k == self.input.down_right => common::Point::new(1, 1),
-                _ => common::Point::new(0, 0),
+                k if k == Left || k == self.input.left => Point::new(-1, 0),
+                k if k == Right || k == self.input.right => Point::new(1, 0),
+                k if k == Up || k == self.input.up => Point::new(0, -1),
+                k if k == Down || k == self.input.down => Point::new(0, 1),
+                k if k == self.input.up_left => Point::new(-1, -1),
+                k if k == self.input.up_right => Point::new(1, -1),
+                k if k == self.input.down_left => Point::new(-1, 1),
+                k if k == self.input.down_right => Point::new(1, 1),
+                _ => Point::new(0, 0),
             };
-            if (delta.x != 0 || delta.y != 0) && self.ui.layout() != UILayout::Inventory {
-                self.try_move(delta);
+            if delta.x != 0 || delta.y != 0 {
+                match &mut self.mode {
+                    GameMode::Aiming { target } => {
+                        target.x = (target.x + delta.x).clamp(0, self.map.width as i32 - 1);
+                        target.y = (target.y + delta.y).clamp(0, self.map.height as i32 - 1);
+                    }
+                    _ if self.ui.layout() != UILayout::Inventory => {
+                        self.try_move(delta);
+                    }
+                    _ => {}
+                }
             }
         }
     }
@@ -289,6 +308,13 @@ impl LurhookGame {
             self.ui.add_log("No fish around.").ok();
             return;
         }
+        self.ui.add_log("Select target...").ok();
+        self.mode = GameMode::Aiming {
+            target: self.player.pos,
+        };
+    }
+
+    fn confirm_cast(&mut self) {
         self.ui.add_log("Casting...").ok();
         self.ui.set_layout(UILayout::Fishing);
         self.mode = GameMode::Fishing { wait: 2 };
@@ -408,6 +434,21 @@ impl LurhookGame {
                 ctx.set(x, y, color, RGB::named(BLACK), to_cp437(glyph));
             }
         }
+        if let GameMode::Aiming { target } = self.mode {
+            if target.x >= cam_x
+                && target.x < cam_x + VIEW_WIDTH
+                && target.y >= cam_y
+                && target.y < cam_y + VIEW_HEIGHT
+            {
+                ctx.set(
+                    target.x - cam_x,
+                    target.y - cam_y,
+                    RGB::named(WHITE),
+                    RGB::named(BLACK),
+                    to_cp437('*'),
+                );
+            }
+        }
     }
 
     /// Draws all fish on the map.
@@ -519,6 +560,7 @@ impl GameState for LurhookGame {
                     )
                     .expect("fish update");
                 }
+                GameMode::Aiming { .. } => {}
                 GameMode::Fishing { .. } => self.update_fishing(),
                 GameMode::End { score } => {
                     ctx.cls();
@@ -649,11 +691,11 @@ mod tests {
     }
 
     #[test]
-    fn cast_enters_fishing_mode() {
+    fn cast_enters_aiming_mode() {
         let mut game = LurhookGame::default();
         game.cast();
-        assert!(matches!(game.mode, GameMode::Fishing { .. }));
-        assert_eq!(game.ui.layout(), UILayout::Fishing);
+        assert!(matches!(game.mode, GameMode::Aiming { .. }));
+        assert_eq!(game.ui.layout(), UILayout::Standard);
     }
 
     #[test]
@@ -669,6 +711,7 @@ mod tests {
     fn fishing_resolves_to_exploring() {
         let mut game = LurhookGame::default();
         game.cast();
+        game.confirm_cast();
         if let GameMode::Fishing { ref mut wait } = game.mode {
             *wait = 0;
         }
@@ -718,6 +761,7 @@ mod tests {
     fn line_reduces_on_break() {
         let mut game = LurhookGame::default();
         game.cast();
+        game.confirm_cast();
         if let GameMode::Fishing { ref mut wait } = game.mode {
             *wait = 0;
         }
@@ -733,6 +777,7 @@ mod tests {
     fn lost_fish_returns_to_exploring() {
         let mut game = LurhookGame::default();
         game.cast();
+        game.confirm_cast();
         if let GameMode::Fishing { ref mut wait } = game.mode {
             *wait = 0;
         }
@@ -890,6 +935,7 @@ mod tests {
         game.player.tension_bonus = 50;
         game.player.bait_bonus = 1.0; // guarantee bite
         game.cast();
+        game.confirm_cast();
         if let GameMode::Fishing { ref mut wait } = game.mode {
             *wait = 0;
         }
