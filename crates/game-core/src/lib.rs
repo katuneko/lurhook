@@ -1,6 +1,7 @@
 //! Game engine entry point.
 
 mod types;
+mod input;
 
 use bracket_lib::prelude::*;
 
@@ -17,7 +18,9 @@ const LINE_DAMAGE: i32 = 10;
 const TIME_SEGMENT_TURNS: u32 = 10;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 const SAVE_PATH: &str = "savegame.ron";
+const CONFIG_PATH: &str = "lurhook.toml";
 use data;
+use input::InputConfig;
 
 /// Current game mode.
 enum GameMode {
@@ -35,6 +38,7 @@ pub struct LurhookGame {
     fishes: Vec<Fish>,
     fish_types: Vec<data::FishType>,
     ui: UIContext,
+    input: InputConfig,
     depth: i32,
     time_of_day: &'static str,
     turn: u32,
@@ -63,6 +67,7 @@ impl LurhookGame {
             fishes,
             fish_types,
             ui: UIContext::default(),
+            input: InputConfig::load(CONFIG_PATH)?,
             depth: 0,
             time_of_day: TIMES[0],
             turn: 0,
@@ -120,23 +125,23 @@ impl LurhookGame {
         self.reeling = false;
         if let Some(key) = ctx.key {
             use VirtualKeyCode::*;
-            if key == C && matches!(self.mode, GameMode::Exploring) {
+            if key == self.input.cast && matches!(self.mode, GameMode::Exploring) {
                 self.cast();
                 return;
             }
-            if key == R && matches!(self.mode, GameMode::Fishing { .. }) {
+            if key == self.input.reel && matches!(self.mode, GameMode::Fishing { .. }) {
                 self.reeling = true;
                 return;
             }
-            if key == PageUp {
+            if key == self.input.scroll_up {
                 self.ui.scroll_up();
                 return;
             }
-            if key == PageDown {
+            if key == self.input.scroll_down {
                 self.ui.scroll_down();
                 return;
             }
-            if key == S {
+            if key == self.input.save {
                 match self.save_game(SAVE_PATH) {
                     Ok(_) => {
                         self.ui.add_log("Game saved.").ok();
@@ -147,15 +152,15 @@ impl LurhookGame {
                 }
                 return;
             }
-            if key == Q {
+            if key == self.input.quit {
                 ctx.quit();
                 return;
             }
-            if key == Return && matches!(self.mode, GameMode::Exploring) {
+            if key == self.input.end_run && matches!(self.mode, GameMode::Exploring) {
                 self.end_run();
                 return;
             }
-            if key == I && matches!(self.mode, GameMode::Exploring) {
+            if key == self.input.inventory && matches!(self.mode, GameMode::Exploring) {
                 let next = if self.ui.layout() == UILayout::Inventory {
                     UILayout::Standard
                 } else {
@@ -165,14 +170,14 @@ impl LurhookGame {
                 return;
             }
             let delta = match key {
-                Left | H => common::Point::new(-1, 0),
-                Right | L => common::Point::new(1, 0),
-                Up | K => common::Point::new(0, -1),
-                Down | J => common::Point::new(0, 1),
-                Y => common::Point::new(-1, -1),
-                U => common::Point::new(1, -1),
-                B => common::Point::new(-1, 1),
-                N => common::Point::new(1, 1),
+                k if k == Left || k == self.input.left => common::Point::new(-1, 0),
+                k if k == Right || k == self.input.right => common::Point::new(1, 0),
+                k if k == Up || k == self.input.up => common::Point::new(0, -1),
+                k if k == Down || k == self.input.down => common::Point::new(0, 1),
+                k if k == self.input.up_left => common::Point::new(-1, -1),
+                k if k == self.input.up_right => common::Point::new(1, -1),
+                k if k == self.input.down_left => common::Point::new(-1, 1),
+                k if k == self.input.down_right => common::Point::new(1, 1),
                 _ => common::Point::new(0, 0),
             };
             if (delta.x != 0 || delta.y != 0) && self.ui.layout() != UILayout::Inventory {

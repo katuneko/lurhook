@@ -67,6 +67,15 @@ $ wasm-pack build --target web
 | 終了      | Q                           |
 
 キーリマップは `lurhook.toml` を編集してください。
+例:
+```toml
+left = "A"
+right = "D"
+up = "W"
+down = "S"
+cast = "C"
+reel = "R"
+```
 
 ## 📦 ディレクトリ構成
 

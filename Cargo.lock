@@ -611,6 +611,7 @@ name = "fishing"
 version = "0.1.0"
 dependencies = [
  "common",
+ "mapgen",
 ]
 
 [[package]]
@@ -1721,6 +1722,7 @@ version = "0.1.0"
 dependencies = [
  "bracket-lib",
  "common",
+ "data",
 ]
 
 [[package]]
