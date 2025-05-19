@@ -8,8 +8,11 @@ pub enum UILayout {
     Standard,
     /// Layout used during the fishing mini game.
     Fishing,
+    /// Layout displaying the inventory list.
+    Inventory,
 }
 use common::GameResult;
+use data;
 
 const LOG_Y: i32 = 17;
 const LOG_WINDOW: i32 = 8;
@@ -109,6 +112,22 @@ impl UIContext {
         ctx.print(0, TENSION_Y, bar);
         Ok(())
     }
+
+    /// Draws the player's inventory when in `Inventory` layout.
+    pub fn draw_inventory(
+        &self,
+        ctx: &mut BTerm,
+        items: &[data::FishType],
+    ) -> GameResult<()> {
+        if self.layout != UILayout::Inventory {
+            return Ok(());
+        }
+        ctx.print_centered(10, "Inventory");
+        for (i, line) in inventory_strings(items).iter().enumerate() {
+            ctx.print_centered(11 + i as i32, line);
+        }
+        Ok(())
+    }
 }
 
 fn tension_bar_string(tension: i32, max: i32) -> String {
@@ -119,6 +138,14 @@ fn tension_bar_string(tension: i32, max: i32) -> String {
 
 pub fn init() {
     println!("Initialized crate: ui");
+}
+
+fn inventory_strings(items: &[data::FishType]) -> Vec<String> {
+    if items.is_empty() {
+        vec!["(empty)".to_string()]
+    } else {
+        items.iter().map(|f| f.name.clone()).collect()
+    }
 }
 
 #[cfg(test)]
@@ -158,6 +185,8 @@ mod tests {
         assert_eq!(ui.layout(), UILayout::Standard);
         ui.set_layout(UILayout::Fishing);
         assert_eq!(ui.layout(), UILayout::Fishing);
+        ui.set_layout(UILayout::Inventory);
+        assert_eq!(ui.layout(), UILayout::Inventory);
     }
 
     #[test]
@@ -172,5 +201,19 @@ mod tests {
             ui.scroll_down();
         }
         assert_eq!(ui.scroll, 0);
+    }
+
+    #[test]
+    fn inventory_string_generation() {
+        let fish = data::FishType {
+            id: "A".into(),
+            name: "FishA".into(),
+            rarity: 1.0,
+            strength: 1,
+            min_depth: 0,
+            max_depth: 1,
+        };
+        assert_eq!(inventory_strings(&[fish.clone()]), vec!["FishA".to_string()]);
+        assert_eq!(inventory_strings(&[]), vec!["(empty)".to_string()]);
     }
 }
