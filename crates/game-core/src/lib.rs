@@ -16,6 +16,7 @@ const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
 const TIME_SEGMENT_TURNS: u32 = 10;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
+const SAVE_PATH: &str = "savegame.ron";
 use data;
 
 /// Current game mode.
@@ -133,6 +134,21 @@ impl LurhookGame {
             }
             if key == PageDown {
                 self.ui.scroll_down();
+                return;
+            }
+            if key == S {
+                match self.save_game(SAVE_PATH) {
+                    Ok(_) => {
+                        self.ui.add_log("Game saved.").ok();
+                    }
+                    Err(e) => {
+                        self.ui.add_log(&format!("Save failed: {}", e)).ok();
+                    }
+                }
+                return;
+            }
+            if key == Q {
+                ctx.quit();
                 return;
             }
             if key == Return && matches!(self.mode, GameMode::Exploring) {
@@ -405,6 +421,7 @@ fn init_subsystems() -> GameResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bracket_lib::prelude::{BTerm, VirtualKeyCode, RGB};
 
     #[test]
     fn init_ok() {
@@ -575,5 +592,46 @@ mod tests {
         game.player.inventory.push(fish);
         game.end_run();
         assert!(matches!(game.mode, GameMode::End { .. }));
+    }
+
+    fn dummy_ctx(key: VirtualKeyCode) -> BTerm {
+        BTerm {
+            width_pixels: 0,
+            height_pixels: 0,
+            original_height_pixels: 0,
+            original_width_pixels: 0,
+            fps: 0.0,
+            frame_time_ms: 0.0,
+            active_console: 0,
+            key: Some(key),
+            mouse_pos: (0, 0),
+            left_click: false,
+            shift: false,
+            control: false,
+            alt: false,
+            web_button: None,
+            quitting: false,
+            post_scanlines: false,
+            post_screenburn: false,
+            screen_burn_color: RGB::from_f32(0.0, 0.0, 0.0),
+            mouse_visible: true,
+        }
+    }
+
+    #[test]
+    fn pressing_s_saves_game() {
+        let mut game = LurhookGame::default();
+        let mut ctx = dummy_ctx(VirtualKeyCode::S);
+        game.handle_input(&mut ctx);
+        assert!(std::fs::metadata(super::SAVE_PATH).is_ok());
+        std::fs::remove_file(super::SAVE_PATH).unwrap();
+    }
+
+    #[test]
+    fn pressing_q_quits() {
+        let mut game = LurhookGame::default();
+        let mut ctx = dummy_ctx(VirtualKeyCode::Q);
+        game.handle_input(&mut ctx);
+        assert!(ctx.quitting);
     }
 }
