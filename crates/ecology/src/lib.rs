@@ -58,11 +58,7 @@ pub fn spawn_fish_population(
 
     let mut rng = RandomNumberGenerator::new();
     let mut fishes = Vec::new();
-    let max = count.min(water.len());
-    for _ in 0..max {
-        let idx = rng.range(0, water.len() as i32) as usize;
-        let pos = water.swap_remove(idx);
-
+    for _ in 0..count {
         let total: f32 = fish_types.iter().map(|f| f.rarity).sum();
         let mut roll = rng.range(0.0, total);
         let mut chosen = &fish_types[0];
@@ -73,6 +69,23 @@ pub fn spawn_fish_population(
                 break;
             }
         }
+
+        let candidates: Vec<usize> = water
+            .iter()
+            .enumerate()
+            .filter(|(_, pt)| {
+                let depth = map.depth(**pt);
+                depth >= chosen.min_depth && depth <= chosen.max_depth
+            })
+            .map(|(i, _)| i)
+            .collect();
+
+        if candidates.is_empty() {
+            continue;
+        }
+
+        let idx = candidates[rng.range(0, candidates.len() as i32) as usize];
+        let pos = water.swap_remove(idx);
 
         fishes.push(Fish {
             kind: chosen.clone(),
@@ -97,8 +110,8 @@ mod tests {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let types = load_fish_types(path).expect("types");
         let fish = spawn_fish(&mut map, &types).expect("fish");
-        let tile = map.tiles[map.idx(fish.position)];
-        assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
+        let depth = map.depth(fish.position);
+        assert!(depth >= fish.kind.min_depth && depth <= fish.kind.max_depth);
     }
 
     #[test]
@@ -107,10 +120,10 @@ mod tests {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let types = load_fish_types(path).expect("types");
         let fishes = spawn_fish_population(&mut map, &types, 5).expect("fishes");
-        assert_eq!(fishes.len(), 5);
+        assert!(!fishes.is_empty());
         for f in fishes {
-            let tile = map.tiles[map.idx(f.position)];
-            assert!(matches!(tile, TileKind::ShallowWater | TileKind::DeepWater));
+            let depth = map.depth(f.position);
+            assert!(depth >= f.kind.min_depth && depth <= f.kind.max_depth);
         }
     }
 

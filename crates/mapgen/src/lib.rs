@@ -19,6 +19,7 @@ pub struct Map {
     pub width: u32,
     pub height: u32,
     pub tiles: Vec<TileKind>,
+    pub depths: Vec<i32>,
 }
 
 impl Map {
@@ -28,12 +29,18 @@ impl Map {
             width,
             height,
             tiles: vec![TileKind::Land; (width * height) as usize],
+            depths: vec![0; (width * height) as usize],
         }
     }
 
     /// Returns tile index from coordinates.
     pub fn idx(&self, pt: Point) -> usize {
         (pt.y as usize) * self.width as usize + pt.x as usize
+    }
+
+    /// Returns the depth in meters at the given point.
+    pub fn depth(&self, pt: Point) -> i32 {
+        self.depths[self.idx(pt)]
     }
 }
 
@@ -58,6 +65,12 @@ pub fn generate(seed: u64) -> GameResult<Map> {
             };
             let idx = map.idx(Point::new(x as i32, y as i32));
             map.tiles[idx] = kind;
+            let depth = if kind == TileKind::Land {
+                0
+            } else {
+                ((-v) * 100.0).round() as i32
+            };
+            map.depths[idx] = depth.max(0);
         }
     }
 
@@ -75,6 +88,7 @@ mod tests {
         assert_eq!(map.width, 120);
         assert_eq!(map.height, 80);
         assert_eq!(map.tiles.len(), 120 * 80);
+        assert_eq!(map.depths.len(), 120 * 80);
     }
 
     #[test]
@@ -95,6 +109,7 @@ mod tests {
     fn new_fills_with_land() {
         let map = Map::new(4, 3);
         assert!(map.tiles.iter().all(|&t| t == TileKind::Land));
+        assert!(map.depths.iter().all(|&d| d == 0));
     }
 
     #[test]
