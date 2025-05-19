@@ -17,6 +17,7 @@ const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
 const MAX_HUNGER: i32 = 100;
+const EAT_RAW_FISH: i32 = 20;
 const TIME_SEGMENT_TURNS: u32 = 10;
 const TIDE_TURNS: u32 = 20;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
@@ -251,6 +252,10 @@ impl LurhookGame {
                 self.ui.set_layout(next);
                 return;
             }
+            if key == self.input.eat && self.ui.layout() == UILayout::Inventory {
+                self.eat_fish();
+                return;
+            }
             let delta = match key {
                 k if k == Left || k == self.input.left => common::Point::new(-1, 0),
                 k if k == Right || k == self.input.right => common::Point::new(1, 0),
@@ -343,6 +348,15 @@ impl LurhookGame {
                     }
                 }
             }
+        }
+    }
+
+    fn eat_fish(&mut self) {
+        if let Some(_fish) = self.player.inventory.pop() {
+            self.player.hunger = (self.player.hunger + EAT_RAW_FISH).min(MAX_HUNGER);
+            self.ui.add_log("You ate a raw fish.").ok();
+        } else {
+            self.ui.add_log("No fish to eat.").ok();
         }
     }
 
@@ -813,5 +827,35 @@ mod tests {
         game.map.tiles.fill(TileKind::Land);
         game.player.pos = common::Point::new(0, 0);
         assert!(game.is_visible(common::Point::new(100, 0)));
+    }
+
+    #[test]
+    fn eat_fish_restores_hunger() {
+        let mut game = LurhookGame::default();
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let fish = data::load_fish_types(path).expect("types")[0].clone();
+        game.player.inventory.push(fish);
+        game.player.hunger = 50;
+        game.eat_fish();
+        assert!(game.player.hunger > 50);
+        assert!(game.player.inventory.is_empty());
+    }
+
+    #[test]
+    fn eating_caps_hunger() {
+        let mut game = LurhookGame::default();
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let fish = data::load_fish_types(path).expect("types")[0].clone();
+        game.player.inventory.push(fish);
+        game.player.hunger = super::MAX_HUNGER - 5;
+        game.eat_fish();
+        assert_eq!(game.player.hunger, super::MAX_HUNGER);
+    }
+
+    #[test]
+    fn eating_without_fish_logs_message() {
+        let mut game = LurhookGame::default();
+        game.eat_fish();
+        assert_eq!(game.player.hunger, super::MAX_HUNGER);
     }
 }
