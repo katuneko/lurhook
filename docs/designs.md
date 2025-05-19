@@ -129,6 +129,11 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 
 * テンションが0になった場合はフックアウトし失敗扱い。
 
+### 6.3 視界制限
+
+* プレイヤーが `DeepWater` タイル上にいる場合、視界半径は 5 マスに限定する。
+* 範囲外のタイルは暗灰色で描画し、位置のみ判別可能とする。
+
 ## 7. モジュール I/F 詳細
 
 | Producer | Consumer  | 関数 / Channel                   | 内容            |
@@ -167,7 +172,6 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 ## 12. 未決定事項 / TODO
 
 * バイト確率の数式調整 (要ゲームバランス検証)
-* 深海タイルの視界制限仕様
 * 色弱フレンドリーパレットの確定
 
 ---
