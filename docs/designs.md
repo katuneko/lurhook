@@ -113,6 +113,7 @@
 Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → Render → Wait
 ```
 * ターン終了時に満腹度を1減少。0の場合はHPが1減る。
+* プレイヤーの入力があった場合のみ1ターン進み、無入力では時間経過しない。
 
 ### 6.2 釣りシーケンス (成功)
 
