@@ -20,6 +20,7 @@ pub struct InputConfig {
     pub end_run: VirtualKeyCode,
     pub scroll_up: VirtualKeyCode,
     pub scroll_down: VirtualKeyCode,
+    pub colorblind: bool,
 }
 
 impl Default for InputConfig {
@@ -42,6 +43,7 @@ impl Default for InputConfig {
             end_run: Return,
             scroll_up: PageUp,
             scroll_down: PageDown,
+            colorblind: false,
         }
     }
 }
@@ -64,9 +66,14 @@ impl InputConfig {
                 Some(v) => v,
                 None => continue,
             };
+            let key = key.trim();
             let val = val.trim().trim_matches('"');
+            if key == "colorblind" {
+                cfg.colorblind = val.parse().unwrap_or(false);
+                continue;
+            }
             if let Some(kc) = parse_key(val) {
-                match key.trim() {
+                match key {
                     "left" => cfg.left = kc,
                     "right" => cfg.right = kc,
                     "up" => cfg.up = kc,
@@ -128,6 +135,7 @@ mod tests {
     fn load_nonexistent_returns_default() {
         let cfg = InputConfig::load("/no/such/file.toml").unwrap();
         assert_eq!(cfg.cast, VirtualKeyCode::C);
+        assert!(!cfg.colorblind);
     }
 
     #[test]
@@ -139,5 +147,17 @@ mod tests {
         let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
         std::fs::remove_file(path).unwrap();
         assert_eq!(cfg.cast, VirtualKeyCode::X);
+        assert!(!cfg.colorblind);
+    }
+
+    #[test]
+    fn load_colorblind_flag() {
+        let mut path = std::env::temp_dir();
+        path.push("test_input_colorblind.toml");
+        let mut file = std::fs::File::create(&path).unwrap();
+        writeln!(file, "colorblind = true").unwrap();
+        let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
+        std::fs::remove_file(path).unwrap();
+        assert!(cfg.colorblind);
     }
 }
