@@ -172,6 +172,16 @@ impl LurhookGame {
         let r = self.visibility_radius();
         (pt.x - self.player.pos.x).abs() <= r && (pt.y - self.player.pos.y).abs() <= r
     }
+
+    fn tile_style(&self, tile: TileKind, visible: bool) -> (char, RGB) {
+        let (glyph, color) = match tile {
+            TileKind::Land => ('.', self.palette.land),
+            TileKind::ShallowWater => ('~', self.palette.shallow),
+            TileKind::DeepWater => ('≈', self.palette.deep),
+        };
+        let color = if visible { color } else { color * 0.4 }; // darken when hidden
+        (glyph, color)
+    }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
         let mut x = self.player.pos.x + delta.x;
@@ -421,16 +431,10 @@ impl LurhookGame {
                 let mx = cam_x + x;
                 let my = cam_y + y;
                 let pt = common::Point::new(mx, my);
-                if !self.is_visible(pt) {
-                    ctx.set(x, y, RGB::named(BLACK), RGB::named(BLACK), to_cp437(' '));
-                    continue;
-                }
                 let idx = self.map.idx(pt);
-                let (glyph, color) = match self.map.tiles[idx] {
-                    TileKind::Land => ('.', self.palette.land),
-                    TileKind::ShallowWater => ('~', self.palette.shallow),
-                    TileKind::DeepWater => ('≈', self.palette.deep),
-                };
+                let tile = self.map.tiles[idx];
+                let visible = self.is_visible(pt);
+                let (glyph, color) = self.tile_style(tile, visible);
                 ctx.set(x, y, color, RGB::named(BLACK), to_cp437(glyph));
             }
         }
@@ -1009,5 +1013,14 @@ mod tests {
         assert!(game.player.hunger > 50);
         assert_eq!(game.player.hp, super::MAX_HP);
         assert!(game.player.inventory.is_empty());
+    }
+
+    #[test]
+    fn tile_style_darkens_when_not_visible() {
+        let game = LurhookGame::default();
+        let (g1, c1) = game.tile_style(TileKind::ShallowWater, true);
+        let (g2, c2) = game.tile_style(TileKind::ShallowWater, false);
+        assert_eq!(g1, g2);
+        assert!(c2.g < c1.g);
     }
 }
