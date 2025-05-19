@@ -20,6 +20,11 @@ pub fn load_fish_types(path: &str) -> GameResult<Vec<FishType>> {
     parse_fish_json(&data)
 }
 
+/// Loads [`FishType`] definitions embedded at compile time (used on WASM).
+pub fn load_fish_types_embedded() -> GameResult<Vec<FishType>> {
+    parse_fish_json(include_str!("../../../assets/fish.json"))
+}
+
 fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
     // extremely naive JSON parser sufficient for the test asset
     let mut fishes = Vec::new();
@@ -33,7 +38,9 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
             let mut max_depth = 0;
             for line in body.lines() {
                 let line = line.trim().trim_end_matches(',');
-                if line.is_empty() { continue; }
+                if line.is_empty() {
+                    continue;
+                }
                 let mut parts = line.splitn(2, ':');
                 let key = parts.next().unwrap().trim().trim_matches('"');
                 let val = parts.next().unwrap().trim().trim_matches('"');
@@ -44,11 +51,18 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
                     "strength" => strength = val.parse().unwrap_or(0),
                     "min_depth" => min_depth = val.parse().unwrap_or(0),
                     "max_depth" => max_depth = val.parse().unwrap_or(0),
-                    _ => {},
+                    _ => {}
                 }
             }
             if !id.is_empty() {
-                fishes.push(FishType { id, name, rarity, strength, min_depth, max_depth });
+                fishes.push(FishType {
+                    id,
+                    name,
+                    rarity,
+                    strength,
+                    min_depth,
+                    max_depth,
+                });
             }
         }
     }
@@ -77,6 +91,11 @@ pub fn load_item_types(path: &str) -> GameResult<Vec<ItemType>> {
     parse_item_json(&data)
 }
 
+/// Loads [`ItemType`] definitions embedded at compile time (used on WASM).
+pub fn load_item_types_embedded() -> GameResult<Vec<ItemType>> {
+    parse_item_json(include_str!("../../../assets/items.json"))
+}
+
 fn parse_item_json(data: &str) -> GameResult<Vec<ItemType>> {
     let mut items = Vec::new();
     for obj in data.split('{').skip(1) {
@@ -102,7 +121,12 @@ fn parse_item_json(data: &str) -> GameResult<Vec<ItemType>> {
                 }
             }
             if !id.is_empty() {
-                items.push(ItemType { id, name, tension_bonus, bite_bonus });
+                items.push(ItemType {
+                    id,
+                    name,
+                    tension_bonus,
+                    bite_bonus,
+                });
             }
         }
     }
@@ -146,6 +170,18 @@ mod tests {
     fn load_items() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/items.json");
         let items = load_item_types(path).expect("items");
+        assert!(!items.is_empty());
+    }
+
+    #[test]
+    fn embedded_fish_loads() {
+        let fishes = load_fish_types_embedded().expect("fishes");
+        assert!(!fishes.is_empty());
+    }
+
+    #[test]
+    fn embedded_items_load() {
+        let items = load_item_types_embedded().expect("items");
         assert!(!items.is_empty());
     }
 

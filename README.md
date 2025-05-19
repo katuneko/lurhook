@@ -51,6 +51,7 @@ $ cargo run --no-default-features --features tui
 ```bash
 # wasm-pack が必要です
 $ wasm-pack build --target web
+# ビルド後は `index.html` をブラウザで開いてプレイ
 ```
 
 > **Tip:** 開発中は `cargo watch -x run` で保存ごと即実行が便利！
