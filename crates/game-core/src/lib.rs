@@ -1,8 +1,8 @@
 //! Game engine entry point.
 
-mod types;
-mod input;
 mod app;
+mod input;
+mod types;
 
 use bracket_lib::prelude::*;
 
@@ -21,8 +21,8 @@ const TIDE_TURNS: u32 = 20;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 const SAVE_PATH: &str = "savegame.ron";
 const CONFIG_PATH: &str = "lurhook.toml";
-use input::InputConfig;
 pub use app::LurhookApp;
+use input::InputConfig;
 
 /// Current game mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,9 +72,11 @@ impl LurhookGame {
         } else {
             ui::ColorPalette::default()
         };
+        let start = common::Point::new(map.width as i32 / 2, map.height as i32 / 2);
+        let depth = map.depth(start);
         Ok(Self {
             player: Player {
-                pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
+                pos: start,
                 hp: 10,
                 line: 100,
                 bait_bonus: equipped.bite_bonus,
@@ -85,7 +87,7 @@ impl LurhookGame {
             fishes,
             ui: UIContext::default(),
             input,
-            depth: 0,
+            depth,
             time_of_day: TIMES[0],
             turn: 0,
             rng: RandomNumberGenerator::seeded(seed),
@@ -124,6 +126,19 @@ impl LurhookGame {
             common::Point::new(-1, 0)
         }
     }
+
+    fn visibility_radius(&self) -> i32 {
+        let idx = self.map.idx(self.player.pos);
+        match self.map.tiles[idx] {
+            TileKind::DeepWater => 5,
+            _ => i32::MAX,
+        }
+    }
+
+    fn is_visible(&self, pt: common::Point) -> bool {
+        let r = self.visibility_radius();
+        (pt.x - self.player.pos.x).abs() <= r && (pt.y - self.player.pos.y).abs() <= r
+    }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
         let mut x = self.player.pos.x + delta.x;
@@ -132,11 +147,11 @@ impl LurhookGame {
         y = y.clamp(0, self.map.height as i32 - 1);
         self.player.pos.x = x;
         self.player.pos.y = y;
+        self.depth = self.map.depth(self.player.pos);
     }
 
     fn score(&self) -> i32 {
-        self
-            .player
+        self.player
             .inventory
             .iter()
             .map(|f| ((1.0 / f.rarity) * 10.0) as i32)
@@ -310,7 +325,12 @@ impl LurhookGame {
             for x in 0..VIEW_WIDTH {
                 let mx = cam_x + x;
                 let my = cam_y + y;
-                let idx = self.map.idx(common::Point::new(mx, my));
+                let pt = common::Point::new(mx, my);
+                if !self.is_visible(pt) {
+                    ctx.set(x, y, RGB::named(BLACK), RGB::named(BLACK), to_cp437(' '));
+                    continue;
+                }
+                let idx = self.map.idx(pt);
                 let (glyph, color) = match self.map.tiles[idx] {
                     TileKind::Land => ('.', self.palette.land),
                     TileKind::ShallowWater => ('~', self.palette.shallow),
@@ -329,6 +349,7 @@ impl LurhookGame {
                 && fish.position.x < cam_x + VIEW_WIDTH
                 && fish.position.y >= cam_y
                 && fish.position.y < cam_y + VIEW_HEIGHT
+                && self.is_visible(fish.position)
             {
                 ctx.set(
                     fish.position.x - cam_x,
@@ -722,5 +743,22 @@ mod tests {
         } else {
             panic!("meter not created");
         }
+    }
+
+    #[test]
+    fn visibility_radius_deep_water() {
+        let mut game = LurhookGame::default();
+        game.map.tiles.fill(TileKind::DeepWater);
+        game.player.pos = common::Point::new(0, 0);
+        assert!(game.is_visible(common::Point::new(4, 0)));
+        assert!(!game.is_visible(common::Point::new(6, 0)));
+    }
+
+    #[test]
+    fn visibility_unlimited_on_land() {
+        let mut game = LurhookGame::default();
+        game.map.tiles.fill(TileKind::Land);
+        game.player.pos = common::Point::new(0, 0);
+        assert!(game.is_visible(common::Point::new(100, 0)));
     }
 }
