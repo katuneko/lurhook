@@ -13,12 +13,28 @@ pub struct Fish {
 
 const SCHOOL_RADIUS: i32 = 4;
 
+/// Applies a directional current to all fish positions.
+pub fn apply_current(map: &Map, fishes: &mut [Fish], drift: Point) {
+    if drift.x == 0 && drift.y == 0 {
+        return;
+    }
+    for fish in fishes.iter_mut() {
+        let mut new = Point::new(fish.position.x + drift.x, fish.position.y + drift.y);
+        new.x = new.x.clamp(0, map.width as i32 - 1);
+        new.y = new.y.clamp(0, map.height as i32 - 1);
+        if matches!(map.tiles[map.idx(new)], TileKind::ShallowWater | TileKind::DeepWater) {
+            fish.position = new;
+        }
+    }
+}
+
 /// Updates all fish positions with simple AI.
 pub fn update_fish(
     map: &Map,
     fishes: &mut [Fish],
     rng: &mut RandomNumberGenerator,
     time_of_day: &str,
+    drift: Point,
 ) -> GameResult<()> {
     let speed = if time_of_day == "Night" { 2 } else { 1 };
     for i in 0..fishes.len() {
@@ -52,6 +68,7 @@ pub fn update_fish(
             fishes[i].position = new_pt;
         }
     }
+    apply_current(map, fishes, drift);
     Ok(())
 }
 
@@ -166,7 +183,7 @@ mod tests {
         let mut fish = spawn_fish(&mut map, &types).expect("fish");
         let mut rng = RandomNumberGenerator::seeded(1);
         for _ in 0..20 {
-            update_fish(&map, std::slice::from_mut(&mut fish), &mut rng, "Day")
+            update_fish(&map, std::slice::from_mut(&mut fish), &mut rng, "Day", Point::new(0,0))
                 .unwrap();
             assert!(fish.position.x >= 0 && fish.position.x < map.width as i32);
             assert!(fish.position.y >= 0 && fish.position.y < map.height as i32);
@@ -205,7 +222,7 @@ mod tests {
         let before = (fishes[0].position.x - fishes[1].position.x).abs()
             + (fishes[0].position.y - fishes[1].position.y).abs();
         let mut rng = RandomNumberGenerator::seeded(1);
-        update_fish(&map, &mut fishes, &mut rng, "Day").unwrap();
+        update_fish(&map, &mut fishes, &mut rng, "Day", Point::new(0,0)).unwrap();
         let after = (fishes[0].position.x - fishes[1].position.x).abs()
             + (fishes[0].position.y - fishes[1].position.y).abs();
         assert!(after < before || after == 0);
@@ -229,11 +246,30 @@ mod tests {
         let mut night_fish = Fish { kind: ft.clone(), position: Point::new(5, 5) };
         let mut rng_day = RandomNumberGenerator::seeded(1);
         let mut rng_night = RandomNumberGenerator::seeded(1);
-        update_fish(&map, std::slice::from_mut(&mut day_fish), &mut rng_day, "Day").unwrap();
-        update_fish(&map, std::slice::from_mut(&mut night_fish), &mut rng_night, "Night").unwrap();
+        update_fish(&map, std::slice::from_mut(&mut day_fish), &mut rng_day, "Day", Point::new(0,0)).unwrap();
+        update_fish(&map, std::slice::from_mut(&mut night_fish), &mut rng_night, "Night", Point::new(0,0)).unwrap();
         let day_dist = (day_fish.position.x - 5).abs().max((day_fish.position.y - 5).abs());
         let night_dist = (night_fish.position.x - 5).abs().max((night_fish.position.y - 5).abs());
         assert!(night_dist >= day_dist);
         assert!(night_dist <= 2);
+    }
+
+    #[test]
+    fn current_moves_fish() {
+        let mut map = Map::new(5, 5);
+        for t in map.tiles.iter_mut() {
+            *t = TileKind::ShallowWater;
+        }
+        let ft = FishType {
+            id: "A".into(),
+            name: "A".into(),
+            rarity: 1.0,
+            strength: 1,
+            min_depth: 0,
+            max_depth: 10,
+        };
+        let mut fish = Fish { kind: ft, position: Point::new(2, 2) };
+        apply_current(&map, std::slice::from_mut(&mut fish), Point::new(1, 0));
+        assert_eq!(fish.position, Point::new(3, 2));
     }
 }

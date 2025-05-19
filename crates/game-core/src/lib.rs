@@ -2,6 +2,7 @@
 
 mod types;
 mod input;
+mod app;
 
 use bracket_lib::prelude::*;
 
@@ -16,12 +17,15 @@ const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
 const TIME_SEGMENT_TURNS: u32 = 10;
+const TIDE_TURNS: u32 = 20;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 const SAVE_PATH: &str = "savegame.ron";
 const CONFIG_PATH: &str = "lurhook.toml";
 use input::InputConfig;
+pub use app::LurhookApp;
 
 /// Current game mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GameMode {
     Exploring,
     Fishing { wait: u8 },
@@ -44,6 +48,7 @@ pub struct LurhookGame {
     mode: GameMode,
     meter: Option<TensionMeter>,
     reeling: bool,
+    palette: ui::ColorPalette,
 }
 
 impl LurhookGame {
@@ -53,6 +58,12 @@ impl LurhookGame {
         let fish_types = data::load_fish_types(path)?;
         let mut map = generate(seed)?;
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
+        let input = InputConfig::load(CONFIG_PATH)?;
+        let palette = if input.colorblind {
+            ui::ColorPalette::colorblind()
+        } else {
+            ui::ColorPalette::default()
+        };
         Ok(Self {
             player: Player {
                 pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
@@ -64,7 +75,7 @@ impl LurhookGame {
             map,
             fishes,
             ui: UIContext::default(),
-            input: InputConfig::load(CONFIG_PATH)?,
+            input,
             depth: 0,
             time_of_day: TIMES[0],
             turn: 0,
@@ -72,7 +83,13 @@ impl LurhookGame {
             mode: GameMode::Exploring,
             meter: None,
             reeling: false,
+            palette,
         })
+    }
+
+    /// Returns the current game mode.
+    pub fn mode(&self) -> GameMode {
+        self.mode
     }
 
     fn camera(&self) -> (i32, i32) {
@@ -89,6 +106,14 @@ impl LurhookGame {
         self.turn += 1;
         let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
         self.time_of_day = TIMES[idx as usize];
+    }
+
+    fn current_drift(&self) -> common::Point {
+        if (self.turn / TIDE_TURNS) % 2 == 0 {
+            common::Point::new(1, 0)
+        } else {
+            common::Point::new(-1, 0)
+        }
     }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
@@ -121,6 +146,14 @@ impl LurhookGame {
     fn handle_input(&mut self, ctx: &mut BTerm) {
         self.reeling = false;
         if let Some(key) = ctx.key {
+            self.handle_input_key(Some(key), ctx);
+        }
+    }
+
+    /// Handles an input key without relying on BTerm.
+    fn handle_input_key(&mut self, key: Option<VirtualKeyCode>, ctx: &mut BTerm) {
+        self.reeling = false;
+        if let Some(key) = key {
             use VirtualKeyCode::*;
             if key == self.input.cast && matches!(self.mode, GameMode::Exploring) {
                 self.cast();
@@ -265,12 +298,12 @@ impl LurhookGame {
                 let mx = cam_x + x;
                 let my = cam_y + y;
                 let idx = self.map.idx(common::Point::new(mx, my));
-                let glyph = match self.map.tiles[idx] {
-                    TileKind::Land => '.',
-                    TileKind::ShallowWater => '~',
-                    TileKind::DeepWater => '≈',
+                let (glyph, color) = match self.map.tiles[idx] {
+                    TileKind::Land => ('.', self.palette.land),
+                    TileKind::ShallowWater => ('~', self.palette.shallow),
+                    TileKind::DeepWater => ('≈', self.palette.deep),
                 };
-                ctx.print(x, y, glyph);
+                ctx.set(x, y, color, RGB::named(BLACK), to_cp437(glyph));
             }
         }
     }
@@ -284,7 +317,13 @@ impl LurhookGame {
                 && fish.position.y >= cam_y
                 && fish.position.y < cam_y + VIEW_HEIGHT
             {
-                ctx.print(fish.position.x - cam_x, fish.position.y - cam_y, 'f');
+                ctx.set(
+                    fish.position.x - cam_x,
+                    fish.position.y - cam_y,
+                    self.palette.fish,
+                    RGB::named(BLACK),
+                    to_cp437('f'),
+                );
             }
         }
     }
@@ -360,11 +399,13 @@ impl GameState for LurhookGame {
         self.handle_input(ctx);
         match self.mode {
             GameMode::Exploring => {
+                let drift = self.current_drift();
                 update_fish(
                     &self.map,
                     &mut self.fishes,
                     &mut self.rng,
                     self.time_of_day,
+                    drift,
                 )
                 .expect("fish update");
             }
@@ -380,7 +421,13 @@ impl GameState for LurhookGame {
         self.draw_map(ctx);
         self.draw_fish(ctx);
         let (cam_x, cam_y) = self.camera();
-        ctx.print(self.player.pos.x - cam_x, self.player.pos.y - cam_y, "@");
+        ctx.set(
+            self.player.pos.x - cam_x,
+            self.player.pos.y - cam_y,
+            self.palette.player,
+            RGB::named(BLACK),
+            to_cp437('@'),
+        );
         if let Some(m) = &self.meter {
             self.ui.draw_tension(ctx, m.tension, m.max_tension).ok();
         }
@@ -406,7 +453,7 @@ pub fn run() -> BError {
     let context = BTermBuilder::simple(80, 25)?
         .with_title("Lurhook")
         .build()?;
-    let gs = LurhookGame::new(0).expect("init game");
+    let gs = app::LurhookApp::new();
     main_loop(context, gs)
 }
 
