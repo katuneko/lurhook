@@ -1,5 +1,5 @@
 use bracket_lib::prelude::VirtualKeyCode;
-use common::{GameError, GameResult};
+use common::GameResult;
 
 /// Configuration for keyboard controls.
 #[derive(Clone, Debug)]

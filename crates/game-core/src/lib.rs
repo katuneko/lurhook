@@ -19,7 +19,6 @@ const TIME_SEGMENT_TURNS: u32 = 10;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 const SAVE_PATH: &str = "savegame.ron";
 const CONFIG_PATH: &str = "lurhook.toml";
-use data;
 use input::InputConfig;
 
 /// Current game mode.
@@ -36,7 +35,6 @@ pub struct LurhookGame {
     player: Player,
     map: Map,
     fishes: Vec<Fish>,
-    fish_types: Vec<data::FishType>,
     ui: UIContext,
     input: InputConfig,
     depth: i32,
@@ -65,7 +63,6 @@ impl LurhookGame {
             },
             map,
             fishes,
-            fish_types,
             ui: UIContext::default(),
             input: InputConfig::load(CONFIG_PATH)?,
             depth: 0,
@@ -312,7 +309,7 @@ impl LurhookGame {
                 .ok_or_else(|| GameError::Parse(format!("missing {}", key)))?;
             let s = &s[start + key.len()..];
             let end = s
-                .find(|c: char| c == ',' || c == ')')
+                .find(|c: char| [',', ')'].contains(&c))
                 .ok_or_else(|| GameError::Parse(format!("malformed {}", key)))?;
             s[..end]
                 .trim()
@@ -590,7 +587,8 @@ mod tests {
     #[test]
     fn score_calculation() {
         let mut game = LurhookGame::default();
-        let fish = game.fish_types[0].clone();
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let fish = data::load_fish_types(path).expect("types")[0].clone();
         game.player.inventory.push(fish.clone());
         let expected = ((1.0 / fish.rarity) * 10.0) as i32;
         assert_eq!(game.score(), expected);
@@ -599,7 +597,8 @@ mod tests {
     #[test]
     fn end_run_sets_mode() {
         let mut game = LurhookGame::default();
-        let fish = game.fish_types[0].clone();
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let fish = data::load_fish_types(path).expect("types")[0].clone();
         game.player.inventory.push(fish);
         game.end_run();
         assert!(matches!(game.mode, GameMode::End { .. }));
