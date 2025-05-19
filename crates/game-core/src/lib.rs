@@ -19,6 +19,7 @@ const LINE_DAMAGE: i32 = 10;
 const MAX_HUNGER: i32 = 100;
 const EAT_RAW_FISH: i32 = 20;
 const EAT_COOKED_FISH: i32 = 40;
+const EAT_CANNED_FOOD: i32 = 60;
 const COOK_HP_RESTORE: i32 = 2;
 const MAX_HP: i32 = 10;
 const TIME_SEGMENT_TURNS: u32 = 10;
@@ -106,6 +107,7 @@ impl LurhookGame {
                 line: 100,
                 bait_bonus: equipped.bite_bonus,
                 tension_bonus: equipped.tension_bonus,
+                canned_food: 0,
                 inventory: Vec::new(),
             },
             map,
@@ -294,6 +296,10 @@ impl LurhookGame {
                 self.cook_fish();
                 return;
             }
+            if key == self.input.snack && self.ui.layout() == UILayout::Inventory {
+                self.eat_canned_food();
+                return;
+            }
             let delta = match key {
                 k if k == Left || k == self.input.left => Point::new(-1, 0),
                 k if k == Right || k == self.input.right => Point::new(1, 0),
@@ -434,6 +440,16 @@ impl LurhookGame {
         }
     }
 
+    fn eat_canned_food(&mut self) {
+        if self.player.canned_food > 0 {
+            self.player.canned_food -= 1;
+            self.player.hunger = (self.player.hunger + EAT_CANNED_FOOD).min(MAX_HUNGER);
+            self.ui.add_log("You ate canned food.").ok();
+        } else {
+            self.ui.add_log("No canned food available.").ok();
+        }
+    }
+
     /// Draws the map to the screen.
     fn draw_map(&self, ctx: &mut BTerm) {
         let (cam_x, cam_y) = self.camera();
@@ -490,11 +506,12 @@ impl LurhookGame {
     /// Saves a minimal game state to a RON-like file at `path`.
     pub fn save_game(&self, path: &str) -> GameResult<()> {
         let content = format!(
-            "(player:(pos:(x:{}, y:{}), hp:{}, hunger:{}), time_of_day:\"{}\")",
+            "(player:(pos:(x:{}, y:{}), hp:{}, hunger:{}, food:{}), time_of_day:\"{}\")",
             self.player.pos.x,
             self.player.pos.y,
             self.player.hp,
             self.player.hunger,
+            self.player.canned_food,
             self.time_of_day
         );
         std::fs::write(path, content)?;
@@ -539,6 +556,7 @@ impl LurhookGame {
         game.player.pos.y = parse_i32(&data, "y:")?;
         game.player.hp = parse_i32(&data, "hp:")?;
         game.player.hunger = parse_i32(&data, "hunger:")?;
+        game.player.canned_food = parse_i32(&data, "food:")?;
         let tod = parse_str(&data, "time_of_day:")?;
         game.time_of_day = match tod {
             "Dawn" => "Dawn",
@@ -761,6 +779,8 @@ mod tests {
         std::fs::remove_file(path).unwrap();
         assert_eq!(loaded.player.pos, game.player.pos);
         assert_eq!(loaded.player.hp, game.player.hp);
+        assert_eq!(loaded.player.hunger, game.player.hunger);
+        assert_eq!(loaded.player.canned_food, game.player.canned_food);
         assert_eq!(loaded.time_of_day, game.time_of_day);
     }
 
@@ -1037,5 +1057,15 @@ mod tests {
         let (g2, c2) = game.tile_style(TileKind::ShallowWater, false);
         assert_eq!(g1, g2);
         assert!(c2.g < c1.g);
+    }
+
+    #[test]
+    fn canned_food_restores_hunger() {
+        let mut game = LurhookGame::default();
+        game.player.canned_food = 1;
+        game.player.hunger = 50;
+        game.eat_canned_food();
+        assert!(game.player.hunger > 50);
+        assert_eq!(game.player.canned_food, 0);
     }
 }

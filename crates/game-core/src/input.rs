@@ -17,6 +17,7 @@ pub struct InputConfig {
     pub inventory: VirtualKeyCode,
     pub eat: VirtualKeyCode,
     pub cook: VirtualKeyCode,
+    pub snack: VirtualKeyCode,
     pub save: VirtualKeyCode,
     pub quit: VirtualKeyCode,
     pub end_run: VirtualKeyCode,
@@ -43,6 +44,7 @@ impl Default for InputConfig {
             inventory: I,
             eat: X,
             cook: F,
+            snack: G,
             save: S,
             quit: Q,
             end_run: Return,
@@ -93,6 +95,7 @@ impl InputConfig {
                     "inventory" => cfg.inventory = kc,
                     "eat" => cfg.eat = kc,
                     "cook" => cfg.cook = kc,
+                    "snack" => cfg.snack = kc,
                     "save" => cfg.save = kc,
                     "quit" => cfg.quit = kc,
                     "end_run" => cfg.end_run = kc,
@@ -150,6 +153,7 @@ mod tests {
         assert_eq!(cfg.cast, VirtualKeyCode::C);
         assert_eq!(cfg.eat, VirtualKeyCode::X);
         assert_eq!(cfg.cook, VirtualKeyCode::F);
+        assert_eq!(cfg.snack, VirtualKeyCode::G);
         assert_eq!(cfg.help, VirtualKeyCode::F1);
         assert!(!cfg.colorblind);
     }
@@ -162,11 +166,13 @@ mod tests {
         writeln!(file, "cast = \"X\"").unwrap();
         writeln!(file, "eat = \"E\"").unwrap();
         writeln!(file, "cook = \"G\"").unwrap();
+        writeln!(file, "snack = \"H\"").unwrap();
         let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
         std::fs::remove_file(path).unwrap();
         assert_eq!(cfg.cast, VirtualKeyCode::X);
         assert_eq!(cfg.eat, VirtualKeyCode::E);
         assert_eq!(cfg.cook, VirtualKeyCode::G);
+        assert_eq!(cfg.snack, VirtualKeyCode::H);
         assert!(!cfg.colorblind);
     }
 

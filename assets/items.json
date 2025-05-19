@@ -10,5 +10,11 @@
     "name": "Lure Plus",
     "tension_bonus": 20,
     "bite_bonus": 0.2
+  },
+  {
+    "id": "CANNED_MEAL",
+    "name": "Canned Meal",
+    "tension_bonus": 0,
+    "bite_bonus": 0.0
   }
 ]
