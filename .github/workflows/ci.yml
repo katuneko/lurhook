@@ -22,7 +22,7 @@ jobs:
       - name: Clippy
         run: cargo clippy -- -D warnings
       - name: Test
-        run: cargo test --all --offline
+        run: cargo test --all
 
   wasm:
     runs-on: ubuntu-latest
