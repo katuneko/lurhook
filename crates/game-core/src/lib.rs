@@ -139,6 +139,15 @@ impl LurhookGame {
                 self.end_run();
                 return;
             }
+            if key == I && matches!(self.mode, GameMode::Exploring) {
+                let next = if self.ui.layout() == UILayout::Inventory {
+                    UILayout::Standard
+                } else {
+                    UILayout::Inventory
+                };
+                self.ui.set_layout(next);
+                return;
+            }
             let delta = match key {
                 Left | H => common::Point::new(-1, 0),
                 Right | L => common::Point::new(1, 0),
@@ -150,7 +159,7 @@ impl LurhookGame {
                 N => common::Point::new(1, 1),
                 _ => common::Point::new(0, 0),
             };
-            if delta.x != 0 || delta.y != 0 {
+            if (delta.x != 0 || delta.y != 0) && self.ui.layout() != UILayout::Inventory {
                 self.try_move(delta);
             }
         }
@@ -361,6 +370,7 @@ impl GameState for LurhookGame {
                 self.time_of_day,
             )
             .ok();
+        self.ui.draw_inventory(ctx, &self.player.inventory).ok();
     }
 }
 
