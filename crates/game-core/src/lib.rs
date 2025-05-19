@@ -98,7 +98,7 @@ impl LurhookGame {
         };
         let start = common::Point::new(map.width as i32 / 2, map.height as i32 / 2);
         let depth = map.depth(start);
-        Ok(Self {
+        let mut game = Self {
             player: Player {
                 pos: start,
                 hp: MAX_HP,
@@ -120,7 +120,9 @@ impl LurhookGame {
             meter: None,
             reeling: false,
             palette,
-        })
+        };
+        game.ui.set_layout(ui::UILayout::Help);
+        Ok(game)
     }
 
     /// Returns the current game mode.
@@ -245,6 +247,15 @@ impl LurhookGame {
             }
             if key == self.input.scroll_down {
                 self.ui.scroll_down();
+                return;
+            }
+            if key == self.input.help {
+                let next = if self.ui.layout() == UILayout::Help {
+                    UILayout::Standard
+                } else {
+                    UILayout::Help
+                };
+                self.ui.set_layout(next);
                 return;
             }
             if key == self.input.save {
@@ -582,6 +593,10 @@ impl GameState for LurhookGame {
             }
         }
         ctx.cls();
+        if self.ui.layout() == UILayout::Help {
+            self.ui.draw_help(ctx).ok();
+            return;
+        }
         self.draw_map(ctx);
         self.draw_fish(ctx);
         let (cam_x, cam_y) = self.camera();
@@ -699,7 +714,7 @@ mod tests {
         let mut game = LurhookGame::default();
         game.cast();
         assert!(matches!(game.mode, GameMode::Aiming { .. }));
-        assert_eq!(game.ui.layout(), UILayout::Standard);
+        assert_eq!(game.ui.layout(), UILayout::Help);
     }
 
     #[test]
@@ -708,7 +723,7 @@ mod tests {
         game.fishes.clear();
         game.cast();
         assert!(matches!(game.mode, GameMode::Exploring));
-        assert_eq!(game.ui.layout(), UILayout::Standard);
+        assert_eq!(game.ui.layout(), UILayout::Help);
     }
 
     #[test]

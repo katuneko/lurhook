@@ -1,5 +1,5 @@
 //! UI context stubs.
-use bracket_lib::prelude::{BTerm, RGB, CYAN, NAVY, GREEN, YELLOW, RED, WHITE, GRAY};
+use bracket_lib::prelude::{BTerm, CYAN, GRAY, GREEN, NAVY, RED, RGB, WHITE, YELLOW};
 
 /// UI layout type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,6 +10,8 @@ pub enum UILayout {
     Fishing,
     /// Layout displaying the inventory list.
     Inventory,
+    /// Layout showing help and controls.
+    Help,
 }
 
 /// Color palette for map and entity rendering.
@@ -108,7 +110,14 @@ impl UIContext {
 
     /// Draws log window to the screen.
     pub fn draw_logs(&self, ctx: &mut BTerm) -> GameResult<()> {
-        let log_y = if self.layout == UILayout::Fishing { LOG_Y + 1 } else { LOG_Y };
+        if self.layout == UILayout::Help {
+            return Ok(());
+        }
+        let log_y = if self.layout == UILayout::Fishing {
+            LOG_Y + 1
+        } else {
+            LOG_Y
+        };
         let start = self
             .logs
             .len()
@@ -130,7 +139,14 @@ impl UIContext {
         depth: i32,
         time: &str,
     ) -> GameResult<()> {
-        let base_y = if self.layout == UILayout::Fishing { LOG_Y + 1 } else { LOG_Y };
+        if self.layout == UILayout::Help {
+            return Ok(());
+        }
+        let base_y = if self.layout == UILayout::Fishing {
+            LOG_Y + 1
+        } else {
+            LOG_Y
+        };
         ctx.print(60, base_y, format!("HP: {}", hp));
         ctx.print(60, base_y + 1, format!("Line: {}", line));
         ctx.print(60, base_y + 2, format!("Depth: {}m", depth));
@@ -143,7 +159,13 @@ impl UIContext {
         } else {
             RED
         };
-        ctx.print_color(60, base_y + 3, color, RGB::named(BLACK), format!("Food: {}", bar));
+        ctx.print_color(
+            60,
+            base_y + 3,
+            color,
+            RGB::named(BLACK),
+            format!("Food: {}", bar),
+        );
         ctx.print(60, base_y + 4, format!("Time: {}", time));
         Ok(())
     }
@@ -159,17 +181,24 @@ impl UIContext {
     }
 
     /// Draws the player's inventory when in `Inventory` layout.
-    pub fn draw_inventory(
-        &self,
-        ctx: &mut BTerm,
-        items: &[data::FishType],
-    ) -> GameResult<()> {
+    pub fn draw_inventory(&self, ctx: &mut BTerm, items: &[data::FishType]) -> GameResult<()> {
         if self.layout != UILayout::Inventory {
             return Ok(());
         }
         ctx.print_centered(10, "Inventory");
         for (i, line) in inventory_strings(items).iter().enumerate() {
             ctx.print_centered(11 + i as i32, line);
+        }
+        Ok(())
+    }
+
+    /// Draws help text when in `Help` layout.
+    pub fn draw_help(&self, ctx: &mut BTerm) -> GameResult<()> {
+        if self.layout != UILayout::Help {
+            return Ok(());
+        }
+        for (i, line) in help_strings().iter().enumerate() {
+            ctx.print_centered(5 + i as i32, line);
         }
         Ok(())
     }
@@ -195,6 +224,18 @@ fn inventory_strings(items: &[data::FishType]) -> Vec<String> {
     } else {
         items.iter().map(|f| f.name.clone()).collect()
     }
+}
+
+fn help_strings() -> Vec<String> {
+    vec![
+        "Controls:".to_string(),
+        "Arrow keys / hjkl: Move".to_string(),
+        "c: Cast line".to_string(),
+        "r: Reel".to_string(),
+        "i: Inventory".to_string(),
+        "F1: Toggle this help".to_string(),
+        "Esc/Q: Quit".to_string(),
+    ]
 }
 
 #[cfg(test)]
@@ -241,6 +282,8 @@ mod tests {
         assert_eq!(ui.layout(), UILayout::Fishing);
         ui.set_layout(UILayout::Inventory);
         assert_eq!(ui.layout(), UILayout::Inventory);
+        ui.set_layout(UILayout::Help);
+        assert_eq!(ui.layout(), UILayout::Help);
     }
 
     #[test]
@@ -267,7 +310,10 @@ mod tests {
             min_depth: 0,
             max_depth: 1,
         };
-        assert_eq!(inventory_strings(&[fish.clone()]), vec!["FishA".to_string()]);
+        assert_eq!(
+            inventory_strings(&[fish.clone()]),
+            vec!["FishA".to_string()]
+        );
         assert_eq!(inventory_strings(&[]), vec!["(empty)".to_string()]);
     }
 
@@ -276,5 +322,12 @@ mod tests {
         let normal = ColorPalette::default();
         let cb = ColorPalette::colorblind();
         assert_ne!(normal.fish, cb.fish);
+    }
+
+    #[test]
+    fn help_strings_contains_controls() {
+        let lines = help_strings();
+        assert_eq!(lines.first().unwrap(), "Controls:");
+        assert!(lines.iter().any(|l| l.contains("F1")));
     }
 }
