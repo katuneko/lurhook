@@ -62,6 +62,56 @@ pub fn init() {
     println!("Initialized crate: data");
 }
 
+/// Gear item parameters loaded from JSON.
+#[derive(Clone, Debug)]
+pub struct ItemType {
+    pub id: String,
+    pub name: String,
+    pub tension_bonus: i32,
+    pub bite_bonus: f32,
+}
+
+/// Loads a list of [`ItemType`] from the given JSON file path.
+pub fn load_item_types(path: &str) -> GameResult<Vec<ItemType>> {
+    let data = std::fs::read_to_string(path)?;
+    parse_item_json(&data)
+}
+
+fn parse_item_json(data: &str) -> GameResult<Vec<ItemType>> {
+    let mut items = Vec::new();
+    for obj in data.split('{').skip(1) {
+        if let Some(body) = obj.split('}').next() {
+            let mut id = String::new();
+            let mut name = String::new();
+            let mut tension_bonus = 0;
+            let mut bite_bonus = 0.0;
+            for line in body.lines() {
+                let line = line.trim().trim_end_matches(',');
+                if line.is_empty() {
+                    continue;
+                }
+                let mut parts = line.splitn(2, ':');
+                let key = parts.next().unwrap().trim().trim_matches('"');
+                let val = parts.next().unwrap().trim().trim_matches('"');
+                match key {
+                    "id" => id = val.to_string(),
+                    "name" => name = val.to_string(),
+                    "tension_bonus" => tension_bonus = val.parse().unwrap_or(0),
+                    "bite_bonus" => bite_bonus = val.parse().unwrap_or(0.0),
+                    _ => {}
+                }
+            }
+            if !id.is_empty() {
+                items.push(ItemType { id, name, tension_bonus, bite_bonus });
+            }
+        }
+    }
+    if items.is_empty() {
+        return Err(GameError::InvalidOperation);
+    }
+    Ok(items)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,5 +140,21 @@ mod tests {
         let fishes = parse_fish_json(json).expect("fishes");
         assert_eq!(fishes.len(), 1);
         assert_eq!(fishes[0].id, "A");
+    }
+
+    #[test]
+    fn load_items() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/items.json");
+        let items = load_item_types(path).expect("items");
+        assert!(!items.is_empty());
+    }
+
+    #[test]
+    fn parse_item_simple() {
+        let json = "[\n  {\n    \"id\": \"I\",\n    \"name\": \"Item\",\n    \"tension_bonus\": 5,\n    \"bite_bonus\": 0.1\n  }\n]";
+        let items = parse_item_json(json).expect("items");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].tension_bonus, 5);
+        assert!((items[0].bite_bonus - 0.1).abs() < f32::EPSILON);
     }
 }

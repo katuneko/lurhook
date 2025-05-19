@@ -11,6 +11,8 @@ pub struct Player {
     pub line: i32,
     /// Bonus applied to bite probability from equipped bait/lure.
     pub bait_bonus: f32,
+    /// Bonus added to maximum tension from equipped rod.
+    pub tension_bonus: i32,
     /// Collected fish kinds.
     pub inventory: Vec<FishType>,
 }

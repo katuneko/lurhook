@@ -56,6 +56,14 @@ impl LurhookGame {
     pub fn new(seed: u64) -> GameResult<Self> {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let fish_types = data::load_fish_types(path)?;
+        let item_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/items.json");
+        let items = data::load_item_types(item_path)?;
+        let equipped = items.first().cloned().unwrap_or(data::ItemType {
+            id: String::new(),
+            name: String::new(),
+            tension_bonus: 0,
+            bite_bonus: 0.0,
+        });
         let mut map = generate(seed)?;
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         let input = InputConfig::load(CONFIG_PATH)?;
@@ -69,7 +77,8 @@ impl LurhookGame {
                 pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
                 hp: 10,
                 line: 100,
-                bait_bonus: 0.0,
+                bait_bonus: equipped.bite_bonus,
+                tension_bonus: equipped.tension_bonus,
                 inventory: Vec::new(),
             },
             map,
@@ -88,7 +97,7 @@ impl LurhookGame {
     }
 
     /// Returns the current game mode.
-    pub fn mode(&self) -> GameMode {
+    pub(crate) fn mode(&self) -> GameMode {
         self.mode
     }
 
@@ -248,9 +257,13 @@ impl LurhookGame {
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
                     if let Some(f) = self.fishes.first() {
-                        self.meter = Some(TensionMeter::new(f.kind.strength));
+                        let mut m = TensionMeter::new(f.kind.strength);
+                        m.max_tension += self.player.tension_bonus;
+                        self.meter = Some(m);
                     } else {
-                        self.meter = Some(TensionMeter::default());
+                        let mut m = TensionMeter::default();
+                        m.max_tension += self.player.tension_bonus;
+                        self.meter = Some(m);
                     }
                 } else {
                     self.ui.add_log("The fish got away...").ok();
@@ -494,6 +507,7 @@ mod tests {
         assert_eq!(game.player.hp, 10);
         assert_eq!(game.player.line, 100);
         assert_eq!(game.player.bait_bonus, 0.0);
+        assert_eq!(game.player.tension_bonus, 0);
         assert_eq!(game.map.width, 120);
         assert_eq!(game.map.height, 80);
         assert_eq!(game.fishes.len(), 5);
@@ -690,5 +704,23 @@ mod tests {
         let mut ctx = dummy_ctx(VirtualKeyCode::Q);
         game.handle_input(&mut ctx);
         assert!(ctx.quitting);
+    }
+
+    #[test]
+    fn tension_bonus_applied_to_meter() {
+        let mut game = LurhookGame::default();
+        game.player.tension_bonus = 50;
+        game.player.bait_bonus = 1.0; // guarantee bite
+        game.cast();
+        if let GameMode::Fishing { ref mut wait } = game.mode {
+            *wait = 0;
+        }
+        // Force meter creation
+        game.update_fishing();
+        if let Some(m) = &game.meter {
+            assert_eq!(m.max_tension, 150);
+        } else {
+            panic!("meter not created");
+        }
     }
 }
