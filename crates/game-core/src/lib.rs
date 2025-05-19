@@ -54,10 +54,28 @@ pub struct LurhookGame {
 impl LurhookGame {
     /// Creates a new game with a generated map.
     pub fn new(seed: u64) -> GameResult<Self> {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
-        let fish_types = data::load_fish_types(path)?;
-        let item_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/items.json");
-        let items = data::load_item_types(item_path)?;
+        let fish_types = {
+            #[cfg(target_arch = "wasm32")]
+            {
+                data::load_fish_types_embedded()?
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+                data::load_fish_types(path)?
+            }
+        };
+        let items = {
+            #[cfg(target_arch = "wasm32")]
+            {
+                data::load_item_types_embedded()?
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let item_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/items.json");
+                data::load_item_types(item_path)?
+            }
+        };
         let equipped = items.first().cloned().unwrap_or(data::ItemType {
             id: String::new(),
             name: String::new(),
@@ -666,6 +684,7 @@ mod tests {
         assert_eq!(game.time_of_day, "Dusk");
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn score_calculation() {
         let mut game = LurhookGame::default();
@@ -676,6 +695,7 @@ mod tests {
         assert_eq!(game.score(), expected);
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn end_run_sets_mode() {
         let mut game = LurhookGame::default();
