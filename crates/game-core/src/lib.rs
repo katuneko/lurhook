@@ -18,6 +18,9 @@ const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
 const MAX_HUNGER: i32 = 100;
 const EAT_RAW_FISH: i32 = 20;
+const EAT_COOKED_FISH: i32 = 40;
+const COOK_HP_RESTORE: i32 = 2;
+const MAX_HP: i32 = 10;
 const TIME_SEGMENT_TURNS: u32 = 10;
 const TIDE_TURNS: u32 = 20;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
@@ -97,7 +100,7 @@ impl LurhookGame {
         Ok(Self {
             player: Player {
                 pos: start,
-                hp: 10,
+                hp: MAX_HP,
                 hunger: MAX_HUNGER,
                 line: 100,
                 bait_bonus: equipped.bite_bonus,
@@ -256,6 +259,10 @@ impl LurhookGame {
                 self.eat_fish();
                 return;
             }
+            if key == self.input.cook && self.ui.layout() == UILayout::Inventory {
+                self.cook_fish();
+                return;
+            }
             let delta = match key {
                 k if k == Left || k == self.input.left => common::Point::new(-1, 0),
                 k if k == Right || k == self.input.right => common::Point::new(1, 0),
@@ -362,6 +369,21 @@ impl LurhookGame {
             self.ui.add_log("You ate a raw fish.").ok();
         } else {
             self.ui.add_log("No fish to eat.").ok();
+        }
+    }
+
+    fn cook_fish(&mut self) {
+        let idx = self.map.idx(self.player.pos);
+        if self.map.tiles[idx] != TileKind::Land {
+            self.ui.add_log("You need to be on land to cook.").ok();
+            return;
+        }
+        if let Some(_fish) = self.player.inventory.pop() {
+            self.player.hunger = (self.player.hunger + EAT_COOKED_FISH).min(MAX_HUNGER);
+            self.player.hp = (self.player.hp + COOK_HP_RESTORE).min(MAX_HP);
+            self.ui.add_log("You cooked and ate a fish.").ok();
+        } else {
+            self.ui.add_log("No fish to cook.").ok();
         }
     }
 
@@ -588,7 +610,7 @@ mod tests {
             common::Point::new(game.map.width as i32 / 2, game.map.height as i32 / 2)
         );
         assert!(game.player.inventory.is_empty());
-        assert_eq!(game.player.hp, 10);
+        assert_eq!(game.player.hp, MAX_HP);
         assert_eq!(game.player.line, 100);
         assert_eq!(game.player.bait_bonus, 0.0);
         assert_eq!(game.player.tension_bonus, 0);
@@ -925,5 +947,21 @@ mod tests {
         let mut game = LurhookGame::default();
         game.eat_fish();
         assert_eq!(game.player.hunger, super::MAX_HUNGER);
+    }
+
+    #[test]
+    fn cook_fish_restores_more_hunger_and_hp() {
+        let mut game = LurhookGame::default();
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
+        let fish = data::load_fish_types(path).expect("types")[0].clone();
+        game.player.inventory.push(fish);
+        game.player.hunger = 50;
+        game.player.hp = super::MAX_HP - 2;
+        // ensure on land
+        game.map.tiles.fill(TileKind::Land);
+        game.cook_fish();
+        assert!(game.player.hunger > 50);
+        assert_eq!(game.player.hp, super::MAX_HP);
+        assert!(game.player.inventory.is_empty());
     }
 }
