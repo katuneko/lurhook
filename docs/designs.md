@@ -47,15 +47,16 @@
 │                                                │
 │────────────────────────┬──────────────────────│
 │Log                      │ステータス            │
-│> 開始地点だ…            │HP: ♥♥♥  Line: ▓▓▓▓  │
-│> 餌を付けた。            │Depth: 12m           │
-│> ...                    │Time: Dawn           │
+│> 開始地点だ…            │HP: ♥♥♥  Food:[#####-----]│
+│> 餌を付けた。            │Line: ▓▓▓▓           │
+│> ...                    │Depth: 12m          │
+│                         │Time: Dawn          │
 └────────────────────────┴──────────────────────┘
 ```
 
 * **Map Window**: `mapgen` が生成するタイルを描画。
 * **Log Panel**: 最大 8 行。スクロールは PgUp/PgDn。
-* **Status Panel**: HP / Line / Depth / 時刻。
+* **Status Panel**: HP / Food / Line / Depth / 時刻。
 * **テンションバー**: 釣り中のみ Map Bottom に表示。
 
 ## 4. 入力コマンド一覧
@@ -111,6 +112,7 @@
 ```
 Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → Render → Wait
 ```
+* ターン終了時に満腹度を1減少。0の場合はHPが1減る。
 
 ### 6.2 釣りシーケンス (成功)
 

@@ -7,6 +7,8 @@ pub struct Player {
     pub pos: Point,
     /// Remaining hit points.
     pub hp: i32,
+    /// Current hunger level (0-100). 0 means starving.
+    pub hunger: i32,
     /// Strength of the fishing line.
     pub line: i32,
     /// Bonus applied to bite probability from equipped bait/lure.
