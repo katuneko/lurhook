@@ -15,6 +15,7 @@ pub struct InputConfig {
     pub cast: VirtualKeyCode,
     pub reel: VirtualKeyCode,
     pub inventory: VirtualKeyCode,
+    pub eat: VirtualKeyCode,
     pub save: VirtualKeyCode,
     pub quit: VirtualKeyCode,
     pub end_run: VirtualKeyCode,
@@ -38,6 +39,7 @@ impl Default for InputConfig {
             cast: C,
             reel: R,
             inventory: I,
+            eat: X,
             save: S,
             quit: Q,
             end_run: Return,
@@ -85,6 +87,7 @@ impl InputConfig {
                     "cast" => cfg.cast = kc,
                     "reel" => cfg.reel = kc,
                     "inventory" => cfg.inventory = kc,
+                    "eat" => cfg.eat = kc,
                     "save" => cfg.save = kc,
                     "quit" => cfg.quit = kc,
                     "end_run" => cfg.end_run = kc,
@@ -115,6 +118,7 @@ fn parse_key(name: &str) -> Option<VirtualKeyCode> {
         "n" => Some(N),
         "c" => Some(C),
         "x" => Some(X),
+        "e" => Some(E),
         "r" => Some(R),
         "i" => Some(I),
         "s" => Some(S),
@@ -135,6 +139,7 @@ mod tests {
     fn load_nonexistent_returns_default() {
         let cfg = InputConfig::load("/no/such/file.toml").unwrap();
         assert_eq!(cfg.cast, VirtualKeyCode::C);
+        assert_eq!(cfg.eat, VirtualKeyCode::X);
         assert!(!cfg.colorblind);
     }
 
@@ -144,9 +149,11 @@ mod tests {
         path.push("test_input.toml");
         let mut file = std::fs::File::create(&path).unwrap();
         writeln!(file, "cast = \"X\"").unwrap();
+        writeln!(file, "eat = \"E\"").unwrap();
         let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
         std::fs::remove_file(path).unwrap();
         assert_eq!(cfg.cast, VirtualKeyCode::X);
+        assert_eq!(cfg.eat, VirtualKeyCode::E);
         assert!(!cfg.colorblind);
     }
 
