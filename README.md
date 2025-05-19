@@ -64,6 +64,7 @@ $ wasm-pack build --target web
 | キャスト    | c                           |
 | テンション調整 | r                           |
 | インベントリ  | i                           |
+| 生食      | x                           |
 | セーブ     | S                           |
 | 終了      | Q                           |
 
