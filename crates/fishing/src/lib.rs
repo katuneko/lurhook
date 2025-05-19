@@ -11,6 +11,8 @@ pub enum MeterState {
     Success,
     /// The line tension exceeded the limit and snapped.
     Broken,
+    /// The line went completely slack and the fish escaped.
+    Lost,
 }
 
 /// Manages fishing line tension over time.
@@ -43,6 +45,7 @@ impl TensionMeter {
     /// in the line. Otherwise the fish pulls with its strength. The returned
     /// [`MeterState`] indicates whether the mini game has finished.
     pub fn update(&mut self, reel: bool) -> MeterState {
+        let before = self.tension;
         if reel {
             self.tension = (self.tension - 10).max(0);
         } else {
@@ -52,6 +55,8 @@ impl TensionMeter {
 
         if self.tension >= self.max_tension {
             MeterState::Broken
+        } else if before > 0 && self.tension == 0 {
+            MeterState::Lost
         } else if self.duration <= 0 {
             MeterState::Success
         } else {
@@ -132,6 +137,14 @@ mod tests {
             meter.update(true);
         }
         assert_eq!(meter.tension, 0);
+    }
+
+    #[test]
+    fn lost_when_tension_drops_to_zero() {
+        let mut meter = TensionMeter::new(5);
+        meter.tension = 10;
+        let state = meter.update(true);
+        assert_eq!(state, MeterState::Lost);
     }
 
     #[test]
