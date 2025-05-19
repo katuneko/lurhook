@@ -476,22 +476,32 @@ impl Default for LurhookGame {
 
 impl GameState for LurhookGame {
     fn tick(&mut self, ctx: &mut BTerm) {
-        self.advance_time();
+        let key = ctx.key;
         self.handle_input(ctx);
-        match self.mode {
-            GameMode::Exploring => {
-                let drift = self.current_drift();
-                update_fish(
-                    &self.map,
-                    &mut self.fishes,
-                    &mut self.rng,
-                    self.time_of_day,
-                    drift,
-                )
-                .expect("fish update");
+        if key.is_some() {
+            self.advance_time();
+            match self.mode {
+                GameMode::Exploring => {
+                    let drift = self.current_drift();
+                    update_fish(
+                        &self.map,
+                        &mut self.fishes,
+                        &mut self.rng,
+                        self.time_of_day,
+                        drift,
+                    )
+                    .expect("fish update");
+                }
+                GameMode::Fishing { .. } => self.update_fishing(),
+                GameMode::End { score } => {
+                    ctx.cls();
+                    ctx.print_centered(12, "Run Complete!");
+                    ctx.print_centered(13, format!("Final score: {}", score));
+                    return;
+                }
             }
-            GameMode::Fishing { .. } => self.update_fishing(),
-            GameMode::End { score } => {
+        } else if matches!(self.mode, GameMode::End { .. }) {
+            if let GameMode::End { score } = self.mode {
                 ctx.cls();
                 ctx.print_centered(12, "Run Complete!");
                 ctx.print_centered(13, format!("Final score: {}", score));
@@ -777,6 +787,30 @@ mod tests {
         }
     }
 
+    fn dummy_ctx_opt(key: Option<VirtualKeyCode>) -> BTerm {
+        BTerm {
+            width_pixels: 0,
+            height_pixels: 0,
+            original_height_pixels: 0,
+            original_width_pixels: 0,
+            fps: 0.0,
+            frame_time_ms: 0.0,
+            active_console: 0,
+            key,
+            mouse_pos: (0, 0),
+            left_click: false,
+            shift: false,
+            control: false,
+            alt: false,
+            web_button: None,
+            quitting: false,
+            post_scanlines: false,
+            post_screenburn: false,
+            screen_burn_color: RGB::from_f32(0.0, 0.0, 0.0),
+            mouse_visible: true,
+        }
+    }
+
     #[test]
     fn pressing_s_saves_game() {
         let mut game = LurhookGame::default();
@@ -792,6 +826,18 @@ mod tests {
         let mut ctx = dummy_ctx(VirtualKeyCode::Q);
         game.handle_input(&mut ctx);
         assert!(ctx.quitting);
+    }
+
+    #[test]
+    fn time_advances_only_on_input() {
+        let mut game = LurhookGame::default();
+        let mut ctx = dummy_ctx_opt(None);
+        game.handle_input_key(None, &mut ctx);
+        assert_eq!(game.turn, 0);
+
+        game.handle_input_key(Some(VirtualKeyCode::Right), &mut ctx);
+        game.advance_time();
+        assert_eq!(game.turn, 1);
     }
 
     #[test]
