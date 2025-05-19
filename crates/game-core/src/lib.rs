@@ -363,7 +363,13 @@ impl GameState for LurhookGame {
         self.handle_input(ctx);
         match self.mode {
             GameMode::Exploring => {
-                update_fish(&self.map, &mut self.fishes).expect("fish update");
+                update_fish(
+                    &self.map,
+                    &mut self.fishes,
+                    &mut self.rng,
+                    self.time_of_day,
+                )
+                .expect("fish update");
             }
             GameMode::Fishing { .. } => self.update_fishing(),
             GameMode::End { score } => {
