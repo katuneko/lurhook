@@ -124,6 +124,8 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 キャスト → 待機 (タイマー) → バイト発生 → テンションゲーム → 成功 → 魚を Inventory へ
 ```
 
+* テンションが0になった場合はフックアウトし失敗扱い。
+
 ## 7. モジュール I/F 詳細
 
 | Producer | Consumer  | 関数 / Channel                   | 内容            |

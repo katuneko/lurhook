@@ -346,6 +346,11 @@ impl LurhookGame {
                         self.mode = GameMode::Exploring;
                         self.ui.set_layout(UILayout::Standard);
                     }
+                    MeterState::Lost => {
+                        self.ui.add_log("The fish escaped!").ok();
+                        self.mode = GameMode::Exploring;
+                        self.ui.set_layout(UILayout::Standard);
+                    }
                 }
             }
         }
@@ -700,6 +705,23 @@ mod tests {
         });
         game.update_fishing();
         assert_eq!(game.player.line, 100 - super::LINE_DAMAGE);
+    }
+
+    #[test]
+    fn lost_fish_returns_to_exploring() {
+        let mut game = LurhookGame::default();
+        game.cast();
+        if let GameMode::Fishing { ref mut wait } = game.mode {
+            *wait = 0;
+        }
+        game.meter = Some(TensionMeter {
+            tension: 10,
+            ..Default::default()
+        });
+        game.reeling = true;
+        game.update_fishing();
+        assert!(matches!(game.mode, GameMode::Exploring));
+        assert_eq!(game.ui.layout(), UILayout::Standard);
     }
 
     #[test]
