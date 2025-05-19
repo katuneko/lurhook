@@ -7,7 +7,7 @@
 * [x] **Turn-Based Game Loop:** Integrated the main game loop using the bracket-lib engine. Each tick processes player input and then updates game state (e.g. moves fish) before rendering the map. This ensures a deterministic turn order where exploration mode calls fish AI updates and fishing mode runs the fishing mini-game logic.
 * [x] **Return & Scoring System:** Add a mechanism to **end the fishing run** – for example, letting the player return to the start or press a key to conclude the trip – and then calculate a **final score** based on the fish caught. This involves defining a win/lose condition (e.g. voluntary return or “dropout” if HP or equipment is depleted) and tallying points (using fish rarity/values) to display the results.
 * [x] **Day-Night Cycle:** Added a simple turn-based clock. Each tick advances a counter and updates the `time_of_day` string through Dawn → Day → Dusk → Night in a loop.
-* [x] **CI Stability:** Fixed clippy warnings and flakey tests so GitHub Actions now pass reliably.
+* [x] **CI Stability:** Fixed clippy warnings and removed the `--offline` flag so GitHub Actions run reliably
 
 ## Fishing Mechanics
 
