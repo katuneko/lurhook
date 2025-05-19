@@ -84,8 +84,12 @@ pub fn spawn_fish_population(
 
     let mut rng = RandomNumberGenerator::new();
     let mut fishes = Vec::new();
-    for _ in 0..count {
-        let total: f32 = fish_types.iter().map(|f| f.rarity).sum();
+    let total: f32 = fish_types.iter().map(|f| f.rarity).sum();
+    let max_attempts = count * 10;
+    let mut attempts = 0;
+    while fishes.len() < count && attempts < max_attempts && !water.is_empty() {
+        attempts += 1;
+
         let mut roll = rng.range(0.0, total);
         let mut chosen = &fish_types[0];
         for ft in fish_types {
@@ -147,7 +151,7 @@ mod tests {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let types = load_fish_types(path).expect("types");
         let fishes = spawn_fish_population(&mut map, &types, 5).expect("fishes");
-        assert!(!fishes.is_empty());
+        assert_eq!(fishes.len(), 5);
         for f in fishes {
             let depth = map.depth(f.position);
             assert!(depth >= f.kind.min_depth && depth <= f.kind.max_depth);
