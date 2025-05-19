@@ -45,6 +45,7 @@ pub struct LurhookGame {
     mode: GameMode,
     meter: Option<TensionMeter>,
     reeling: bool,
+    palette: ui::ColorPalette,
 }
 
 impl LurhookGame {
@@ -54,6 +55,12 @@ impl LurhookGame {
         let fish_types = data::load_fish_types(path)?;
         let mut map = generate(seed)?;
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
+        let input = InputConfig::load(CONFIG_PATH)?;
+        let palette = if input.colorblind {
+            ui::ColorPalette::colorblind()
+        } else {
+            ui::ColorPalette::default()
+        };
         Ok(Self {
             player: Player {
                 pos: common::Point::new(map.width as i32 / 2, map.height as i32 / 2),
@@ -65,7 +72,7 @@ impl LurhookGame {
             map,
             fishes,
             ui: UIContext::default(),
-            input: InputConfig::load(CONFIG_PATH)?,
+            input,
             depth: 0,
             time_of_day: TIMES[0],
             turn: 0,
@@ -73,6 +80,7 @@ impl LurhookGame {
             mode: GameMode::Exploring,
             meter: None,
             reeling: false,
+            palette,
         })
     }
 
@@ -274,12 +282,12 @@ impl LurhookGame {
                 let mx = cam_x + x;
                 let my = cam_y + y;
                 let idx = self.map.idx(common::Point::new(mx, my));
-                let glyph = match self.map.tiles[idx] {
-                    TileKind::Land => '.',
-                    TileKind::ShallowWater => '~',
-                    TileKind::DeepWater => '≈',
+                let (glyph, color) = match self.map.tiles[idx] {
+                    TileKind::Land => ('.', self.palette.land),
+                    TileKind::ShallowWater => ('~', self.palette.shallow),
+                    TileKind::DeepWater => ('≈', self.palette.deep),
                 };
-                ctx.print(x, y, glyph);
+                ctx.set(x, y, color, RGB::named(BLACK), to_cp437(glyph));
             }
         }
     }
@@ -293,7 +301,13 @@ impl LurhookGame {
                 && fish.position.y >= cam_y
                 && fish.position.y < cam_y + VIEW_HEIGHT
             {
-                ctx.print(fish.position.x - cam_x, fish.position.y - cam_y, 'f');
+                ctx.set(
+                    fish.position.x - cam_x,
+                    fish.position.y - cam_y,
+                    self.palette.fish,
+                    RGB::named(BLACK),
+                    to_cp437('f'),
+                );
             }
         }
     }
@@ -391,7 +405,13 @@ impl GameState for LurhookGame {
         self.draw_map(ctx);
         self.draw_fish(ctx);
         let (cam_x, cam_y) = self.camera();
-        ctx.print(self.player.pos.x - cam_x, self.player.pos.y - cam_y, "@");
+        ctx.set(
+            self.player.pos.x - cam_x,
+            self.player.pos.y - cam_y,
+            self.palette.player,
+            RGB::named(BLACK),
+            to_cp437('@'),
+        );
         if let Some(m) = &self.meter {
             self.ui.draw_tension(ctx, m.tension, m.max_tension).ok();
         }

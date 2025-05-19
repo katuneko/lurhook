@@ -1,5 +1,5 @@
 //! UI context stubs.
-use bracket_lib::prelude::BTerm;
+use bracket_lib::prelude::{BTerm, RGB, CYAN, NAVY, GREEN, YELLOW, RED, WHITE, GRAY};
 
 /// UI layout type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,6 +10,41 @@ pub enum UILayout {
     Fishing,
     /// Layout displaying the inventory list.
     Inventory,
+}
+
+/// Color palette for map and entity rendering.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ColorPalette {
+    pub land: RGB,
+    pub shallow: RGB,
+    pub deep: RGB,
+    pub player: RGB,
+    pub fish: RGB,
+}
+
+impl Default for ColorPalette {
+    fn default() -> Self {
+        Self {
+            land: RGB::named(GRAY),
+            shallow: RGB::named(CYAN),
+            deep: RGB::named(NAVY),
+            player: RGB::named(YELLOW),
+            fish: RGB::named(GREEN),
+        }
+    }
+}
+
+impl ColorPalette {
+    /// Returns a high contrast palette suitable for colorblind players.
+    pub fn colorblind() -> Self {
+        Self {
+            land: RGB::named(WHITE),
+            shallow: RGB::named(YELLOW),
+            deep: RGB::named(GRAY),
+            player: RGB::named(WHITE),
+            fish: RGB::named(RED),
+        }
+    }
 }
 use common::GameResult;
 
@@ -214,5 +249,12 @@ mod tests {
         };
         assert_eq!(inventory_strings(&[fish.clone()]), vec!["FishA".to_string()]);
         assert_eq!(inventory_strings(&[]), vec!["(empty)".to_string()]);
+    }
+
+    #[test]
+    fn colorblind_palette_differs() {
+        let normal = ColorPalette::default();
+        let cb = ColorPalette::colorblind();
+        assert_ne!(normal.fish, cb.fish);
     }
 }
