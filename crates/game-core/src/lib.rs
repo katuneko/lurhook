@@ -371,6 +371,18 @@ impl LurhookGame {
                             let _ = self.input.save(CONFIG_PATH);
                         }
                     }
+                    VirtualKeyCode::LBracket => {
+                        if self.input.font_scale > 1 {
+                            self.input.font_scale -= 1;
+                            let _ = self.input.save(CONFIG_PATH);
+                        }
+                    }
+                    VirtualKeyCode::RBracket => {
+                        if self.input.font_scale < 4 {
+                            self.input.font_scale += 1;
+                            let _ = self.input.save(CONFIG_PATH);
+                        }
+                    }
                     VirtualKeyCode::Key1 => {
                         self.cycle_cast_key();
                     }
@@ -756,7 +768,13 @@ impl GameState for LurhookGame {
         }
         if self.ui.layout() == UILayout::Options {
             self.ui
-                .draw_options(ctx, self.input.colorblind, self.input.volume, self.input.cast)
+                .draw_options(
+                    ctx,
+                    self.input.colorblind,
+                    self.input.volume,
+                    self.input.cast,
+                    self.input.font_scale,
+                )
                 .ok();
             return;
         }
@@ -796,9 +814,10 @@ impl GameState for LurhookGame {
 pub fn run() -> BError {
     println!("Welcome to Lurhook! (engine stub)");
     init_subsystems()?;
-
+    let cfg = InputConfig::load(CONFIG_PATH).unwrap_or_default();
     let context = BTermBuilder::simple(80, 25)?
         .with_title("Lurhook")
+        .with_tile_dimensions(8 * cfg.font_scale as u32, 8 * cfg.font_scale as u32)
         .build()?;
     let gs = app::LurhookApp::new();
     main_loop(context, gs)
@@ -1399,6 +1418,17 @@ mod tests {
         std::fs::remove_file(CONFIG_PATH).unwrap();
         assert_ne!(loaded.cast, orig);
         assert_eq!(loaded.cast, game.input.cast);
+    }
+
+    #[test]
+    fn font_scale_persists() {
+        let mut game = LurhookGame::default();
+        let _ = std::fs::remove_file(CONFIG_PATH);
+        game.input.font_scale = 2;
+        let _ = game.input.save(CONFIG_PATH);
+        let loaded = InputConfig::load(CONFIG_PATH).unwrap();
+        std::fs::remove_file(CONFIG_PATH).unwrap();
+        assert_eq!(loaded.font_scale, 2);
     }
 
     #[test]
