@@ -1,5 +1,7 @@
 //! UI context stubs.
-use bracket_lib::prelude::{BTerm, CYAN, GRAY, GREEN, NAVY, RED, RGB, WHITE, YELLOW, VirtualKeyCode};
+use bracket_lib::prelude::{
+    BTerm, VirtualKeyCode, CYAN, GRAY, GREEN, NAVY, RED, RGB, WHITE, YELLOW,
+};
 
 /// UI layout type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -215,11 +217,21 @@ impl UIContext {
     }
 
     /// Draws options text when in `Options` layout.
-    pub fn draw_options(&self, ctx: &mut BTerm, colorblind: bool, volume: u8, cast_key: VirtualKeyCode) -> GameResult<()> {
+    pub fn draw_options(
+        &self,
+        ctx: &mut BTerm,
+        colorblind: bool,
+        volume: u8,
+        cast_key: VirtualKeyCode,
+        font_scale: u8,
+    ) -> GameResult<()> {
         if self.layout != UILayout::Options {
             return Ok(());
         }
-        for (i, line) in options_strings(colorblind, volume, cast_key).iter().enumerate() {
+        for (i, line) in options_strings(colorblind, volume, cast_key, font_scale)
+            .iter()
+            .enumerate()
+        {
             ctx.print_centered(5 + i as i32, line);
         }
         Ok(())
@@ -260,7 +272,12 @@ fn help_strings() -> Vec<String> {
     ]
 }
 
-fn options_strings(colorblind: bool, volume: u8, cast_key: VirtualKeyCode) -> Vec<String> {
+fn options_strings(
+    colorblind: bool,
+    volume: u8,
+    cast_key: VirtualKeyCode,
+    font_scale: u8,
+) -> Vec<String> {
     vec![
         "Options:".to_string(),
         format!(
@@ -268,6 +285,7 @@ fn options_strings(colorblind: bool, volume: u8, cast_key: VirtualKeyCode) -> Ve
             if colorblind { "On" } else { "Off" }
         ),
         format!("+/-: Volume {}", volume),
+        format!("[/]: Font Scale {}x", font_scale),
         format!("1: Cast Key [{:?}]", cast_key),
         "O: Back".to_string(),
     ]
@@ -372,9 +390,10 @@ mod tests {
 
     #[test]
     fn options_strings_show_status() {
-        let lines_on = options_strings(true, 5, VirtualKeyCode::C);
+        let lines_on = options_strings(true, 5, VirtualKeyCode::C, 2);
         assert!(lines_on.iter().any(|l| l.contains("On")));
-        let lines_off = options_strings(false, 5, VirtualKeyCode::C);
+        let lines_off = options_strings(false, 5, VirtualKeyCode::C, 1);
         assert!(lines_off.iter().any(|l| l.contains("Off")));
+        assert!(lines_off.iter().any(|l| l.contains("Font Scale")));
     }
 }

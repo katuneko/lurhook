@@ -90,9 +90,11 @@ down = "S"
 cast = "C"
 reel = "R"
 volume = 5
+font_scale = 1
 ```
 `colorblind = true` を追加すると、色弱向けの高コントラスト表示に切り替わります。
 ゲーム内 Options メニューで切り替えた場合も自動でこの設定が保存されます。
+`font_scale` を 2 以上にするとフォントを拡大表示できます。
 
 ## 📦 ディレクトリ構成
 

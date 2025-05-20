@@ -27,6 +27,7 @@ pub struct InputConfig {
     pub options: VirtualKeyCode,
     pub colorblind: bool,
     pub volume: u8,
+    pub font_scale: u8,
 }
 
 impl Default for InputConfig {
@@ -56,6 +57,7 @@ impl Default for InputConfig {
             options: O,
             colorblind: false,
             volume: 5,
+            font_scale: 1,
         }
     }
 }
@@ -86,6 +88,10 @@ impl InputConfig {
             }
             if key == "volume" {
                 cfg.volume = val.parse().unwrap_or(cfg.volume);
+                continue;
+            }
+            if key == "font_scale" {
+                cfg.font_scale = val.parse().unwrap_or(cfg.font_scale);
                 continue;
             }
             if let Some(kc) = parse_key(val) {
@@ -150,6 +156,7 @@ impl InputConfig {
         write_key!(self.options, "options");
         writeln!(file, "colorblind = {}", self.colorblind)?;
         writeln!(file, "volume = {}", self.volume)?;
+        writeln!(file, "font_scale = {}", self.font_scale)?;
         Ok(())
     }
 }
@@ -184,6 +191,8 @@ fn parse_key(name: &str) -> Option<VirtualKeyCode> {
         "f1" => Some(F1),
         "plus" => Some(Plus),
         "minus" => Some(Minus),
+        "lbracket" => Some(LBracket),
+        "rbracket" => Some(RBracket),
         "o" => Some(O),
         _ => None,
     }
@@ -220,6 +229,8 @@ fn key_name(key: VirtualKeyCode) -> &'static str {
         Minus => "Minus",
         F1 => "F1",
         O => "O",
+        LBracket => "LBracket",
+        RBracket => "RBracket",
         other => panic!("unsupported key {:?}", other),
     }
 }
@@ -240,6 +251,7 @@ mod tests {
         assert_eq!(cfg.options, VirtualKeyCode::O);
         assert!(!cfg.colorblind);
         assert_eq!(cfg.volume, 5);
+        assert_eq!(cfg.font_scale, 1);
     }
 
     #[test]
@@ -260,6 +272,7 @@ mod tests {
         assert_eq!(cfg.snack, VirtualKeyCode::H);
         assert!(!cfg.colorblind);
         assert_eq!(cfg.volume, 7);
+        assert_eq!(cfg.font_scale, 1);
     }
 
     #[test]
@@ -308,5 +321,6 @@ mod tests {
         assert_eq!(loaded.left, cfg.left);
         assert_eq!(loaded.colorblind, cfg.colorblind);
         assert_eq!(loaded.volume, cfg.volume);
+        assert_eq!(loaded.font_scale, cfg.font_scale);
     }
 }
