@@ -79,7 +79,7 @@ $ wasm-pack build --target web
 | セーブ     | S                           |
 | 終了      | Q                           |
 
-キーリマップは `lurhook.toml` を編集してください。
+キーリマップや音量は `lurhook.toml` を編集するか、ゲーム内 Options で変更できます。
 例:
 ```toml
 left = "A"
@@ -88,6 +88,7 @@ up = "W"
 down = "S"
 cast = "C"
 reel = "R"
+volume = 5
 ```
 `colorblind = true` を追加すると、色弱向けの高コントラスト表示に切り替わります。
 ゲーム内 Options メニューで切り替えた場合も自動でこの設定が保存されます。

@@ -26,6 +26,7 @@ pub struct InputConfig {
     pub help: VirtualKeyCode,
     pub options: VirtualKeyCode,
     pub colorblind: bool,
+    pub volume: u8,
 }
 
 impl Default for InputConfig {
@@ -54,6 +55,7 @@ impl Default for InputConfig {
             help: F1,
             options: O,
             colorblind: false,
+            volume: 5,
         }
     }
 }
@@ -80,6 +82,10 @@ impl InputConfig {
             let val = val.trim().trim_matches('"');
             if key == "colorblind" {
                 cfg.colorblind = val.parse().unwrap_or(false);
+                continue;
+            }
+            if key == "volume" {
+                cfg.volume = val.parse().unwrap_or(cfg.volume);
                 continue;
             }
             if let Some(kc) = parse_key(val) {
@@ -143,6 +149,7 @@ impl InputConfig {
         write_key!(self.help, "help");
         write_key!(self.options, "options");
         writeln!(file, "colorblind = {}", self.colorblind)?;
+        writeln!(file, "volume = {}", self.volume)?;
         Ok(())
     }
 }
@@ -175,6 +182,8 @@ fn parse_key(name: &str) -> Option<VirtualKeyCode> {
         "pageup" => Some(PageUp),
         "pagedown" => Some(PageDown),
         "f1" => Some(F1),
+        "plus" => Some(Plus),
+        "minus" => Some(Minus),
         "o" => Some(O),
         _ => None,
     }
@@ -207,6 +216,8 @@ fn key_name(key: VirtualKeyCode) -> &'static str {
         Return => "Return",
         PageUp => "PageUp",
         PageDown => "PageDown",
+        Plus => "Plus",
+        Minus => "Minus",
         F1 => "F1",
         O => "O",
         other => panic!("unsupported key {:?}", other),
@@ -228,6 +239,7 @@ mod tests {
         assert_eq!(cfg.help, VirtualKeyCode::F1);
         assert_eq!(cfg.options, VirtualKeyCode::O);
         assert!(!cfg.colorblind);
+        assert_eq!(cfg.volume, 5);
     }
 
     #[test]
@@ -239,6 +251,7 @@ mod tests {
         writeln!(file, "eat = \"E\"").unwrap();
         writeln!(file, "cook = \"G\"").unwrap();
         writeln!(file, "snack = \"H\"").unwrap();
+        writeln!(file, "volume = 7").unwrap();
         let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
         std::fs::remove_file(path).unwrap();
         assert_eq!(cfg.cast, VirtualKeyCode::X);
@@ -246,6 +259,7 @@ mod tests {
         assert_eq!(cfg.cook, VirtualKeyCode::G);
         assert_eq!(cfg.snack, VirtualKeyCode::H);
         assert!(!cfg.colorblind);
+        assert_eq!(cfg.volume, 7);
     }
 
     #[test]
@@ -254,9 +268,11 @@ mod tests {
         path.push("test_input_colorblind.toml");
         let mut file = std::fs::File::create(&path).unwrap();
         writeln!(file, "colorblind = true").unwrap();
+        writeln!(file, "volume = 3").unwrap();
         let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
         std::fs::remove_file(path).unwrap();
         assert!(cfg.colorblind);
+        assert_eq!(cfg.volume, 3);
     }
 
     #[test]
@@ -291,5 +307,6 @@ mod tests {
         std::fs::remove_file(path).unwrap();
         assert_eq!(loaded.left, cfg.left);
         assert_eq!(loaded.colorblind, cfg.colorblind);
+        assert_eq!(loaded.volume, cfg.volume);
     }
 }
