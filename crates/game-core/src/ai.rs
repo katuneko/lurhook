@@ -38,7 +38,7 @@ impl LurhookGame {
                     self.storm_turns = 5;
                     self.ui.add_log("A storm reduces visibility!").ok();
                 }
-                if self.rng.range(0, 100) < self.difficulty.hazard_chance() {
+                if self.rng.range(0, 100) < self.difficulty.hazard_chance(self.area) {
                     self.hazards.push(Hazard {
                         pos: self.player.pos,
                         turns: HAZARD_DURATION,

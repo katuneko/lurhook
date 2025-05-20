@@ -37,3 +37,29 @@ pub struct Hazard {
     pub pos: Point,
     pub turns: u8,
 }
+
+/// Progression area stage.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Area {
+    Coast,
+    Offshore,
+    DeepSea,
+}
+
+impl Area {
+    pub fn size(self) -> (u32, u32) {
+        match self {
+            Area::Coast => (80, 50),
+            Area::Offshore => (120, 80),
+            Area::DeepSea => (160, 120),
+        }
+    }
+
+    pub fn hazard_multiplier(self) -> i32 {
+        match self {
+            Area::Coast => 1,
+            Area::Offshore => 2,
+            Area::DeepSea => 3,
+        }
+    }
+}

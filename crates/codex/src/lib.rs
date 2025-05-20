@@ -52,6 +52,16 @@ impl Codex {
     pub fn count(&self, id: &str) -> u32 {
         *self.records.get(id).unwrap_or(&0)
     }
+
+    /// Returns the total capture count across all fish.
+    pub fn total_captures(&self) -> u32 {
+        self.records.values().copied().sum()
+    }
+
+    #[cfg(test)]
+    pub fn set_count(&mut self, id: &str, count: u32) {
+        self.records.insert(id.to_string(), count);
+    }
 }
 
 #[cfg(test)]
@@ -73,5 +83,13 @@ mod tests {
         let loaded = Codex::load(path).unwrap();
         fs::remove_file(path).unwrap();
         assert_eq!(loaded.count("A"), 1);
+    }
+
+    #[test]
+    fn total_captures_sums_values() {
+        let mut c = Codex::default();
+        c.records.insert("A".into(), 2);
+        c.records.insert("B".into(), 3);
+        assert_eq!(c.total_captures(), 5);
     }
 }
