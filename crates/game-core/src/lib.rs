@@ -15,6 +15,7 @@ use ecology::update_fish;
 use ecology::{spawn_fish_population, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
+use codex::Codex;
 use ui_crate::{init as ui_init, ColorPalette, UIContext, UILayout};
 
 const VIEW_WIDTH: i32 = 60;
@@ -34,6 +35,7 @@ const TIDE_TURNS: u32 = 20;
 const TIMES: [&str; 4] = ["Dawn", "Day", "Dusk", "Night"];
 const SAVE_PATH: &str = "savegame.ron";
 const CONFIG_PATH: &str = "lurhook.toml";
+const CODEX_PATH: &str = "codex.json";
 pub use app::LurhookApp;
 use input::InputConfig;
 
@@ -107,6 +109,7 @@ pub struct LurhookGame {
     cast_path: Option<Vec<common::Point>>,
     cast_step: usize,
     inventory_cursor: usize,
+    codex: codex::Codex,
 }
 
 impl LurhookGame {
@@ -215,6 +218,7 @@ impl LurhookGame {
             cast_path: None,
             cast_step: 0,
             inventory_cursor: 0,
+            codex: Codex::load(CODEX_PATH)?,
         };
         game.ui.set_layout(UILayout::Help);
         Ok(game)
@@ -593,7 +597,9 @@ impl LurhookGame {
                     }
                     MeterState::Success => {
                         if let Some(fish) = self.fishes.pop() {
+                            let id = fish.kind.id.clone();
                             self.player.inventory.push(fish.kind);
+                            let _ = self.codex.record_capture(CODEX_PATH, &id);
                             self.ui.add_log("Caught a fish!").ok();
                         }
                         self.mode = GameMode::Exploring;

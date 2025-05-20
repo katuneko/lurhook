@@ -316,6 +316,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "codex"
+version = "0.1.0"
+dependencies = [
+ "common",
+]
+
+[[package]]
 name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -611,6 +618,7 @@ name = "fishing"
 version = "0.1.0"
 dependencies = [
  "common",
+ "data",
  "mapgen",
 ]
 
@@ -705,6 +713,7 @@ name = "game-core"
 version = "0.1.0"
 dependencies = [
  "bracket-lib",
+ "codex",
  "common",
  "data",
  "ecology",
@@ -941,6 +950,7 @@ name = "lurhook"
 version = "0.1.0"
 dependencies = [
  "game-core",
+ "wasm-bindgen",
 ]
 
 [[package]]
