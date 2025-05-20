@@ -111,6 +111,7 @@ pub struct LurhookGame {
     cast_path: Option<Vec<common::Point>>,
     cast_step: usize,
     inventory_cursor: usize,
+    inventory_focus: bool,
     codex: codex::Codex,
     area: Area,
     seed: u64,
@@ -224,6 +225,7 @@ impl LurhookGame {
             cast_path: None,
             cast_step: 0,
             inventory_cursor: 0,
+            inventory_focus: false,
             codex: Codex::load(CODEX_PATH)?,
             area,
             seed,
@@ -469,7 +471,7 @@ impl LurhookGame {
                 return;
             }
             if key == self.input.end_run {
-                if self.ui.layout() == UILayout::Inventory {
+                if self.inventory_focus {
                     self.activate_selected_item();
                 } else if matches!(self.mode, GameMode::Exploring) {
                     self.end_run();
@@ -477,24 +479,21 @@ impl LurhookGame {
                 return;
             }
             if key == self.input.inventory && matches!(self.mode, GameMode::Exploring) {
-                let next = if self.ui.layout() == UILayout::Inventory {
-                    UILayout::Standard
-                } else {
+                self.inventory_focus = !self.inventory_focus;
+                if self.inventory_focus {
                     self.inventory_cursor = 0;
-                    UILayout::Inventory
-                };
-                self.ui.set_layout(next);
+                }
                 return;
             }
-            if key == self.input.eat && self.ui.layout() == UILayout::Inventory {
+            if key == self.input.eat && self.inventory_focus {
                 self.eat_fish();
                 return;
             }
-            if key == self.input.cook && self.ui.layout() == UILayout::Inventory {
+            if key == self.input.cook && self.inventory_focus {
                 self.cook_fish();
                 return;
             }
-            if key == self.input.snack && self.ui.layout() == UILayout::Inventory {
+            if key == self.input.snack && self.inventory_focus {
                 self.eat_canned_food();
                 return;
             }
@@ -510,7 +509,7 @@ impl LurhookGame {
                 _ => Point::new(0, 0),
             };
             if delta.x != 0 || delta.y != 0 {
-                if self.ui.layout() == UILayout::Inventory {
+                if self.inventory_focus {
                     let total = self.player.items.len() + self.player.inventory.len();
                     if delta.y < 0 && self.inventory_cursor > 0 {
                         self.inventory_cursor -= 1;
@@ -896,7 +895,7 @@ impl GameState for LurhookGame {
             .ok();
         let lines = self.inventory_lines();
         self.ui
-            .draw_inventory(ctx, &lines, self.inventory_cursor)
+            .draw_inventory(ctx, &lines, self.inventory_cursor, self.inventory_focus)
             .ok();
     }
 }
@@ -1449,7 +1448,7 @@ mod tests {
             reel_factor: 1.0,
             bite_bonus: 0.0,
         });
-        game.ui.set_layout(UILayout::Inventory);
+        game.inventory_focus = true;
         let mut ctx = dummy_ctx(VirtualKeyCode::Down);
         game.handle_input(&mut ctx);
         assert_eq!(game.inventory_cursor, 1);
@@ -1468,7 +1467,7 @@ mod tests {
         };
         game.player.items.push(rod.clone());
         game.inventory_cursor = game.player.items.len() - 1;
-        game.ui.set_layout(UILayout::Inventory);
+        game.inventory_focus = true;
         game.activate_selected_item();
         assert_eq!(game.player.tension_bonus, 5);
     }
