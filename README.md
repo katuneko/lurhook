@@ -19,6 +19,7 @@
 * 💾 セーブ&ロード対応
 * 🧳 インベントリ表示で捕獲魚を確認
 * 🖥️ Windows / macOS / Linux / WASM 対応予定
+* 🔱 難易度モード (Easy/Normal/Hard)
 * ⭐ キャスト時に軌跡と水しぶきを ASCII 演出
 
 ## 🏗️ ビルド方法

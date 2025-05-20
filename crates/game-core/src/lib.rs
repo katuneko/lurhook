@@ -46,6 +46,44 @@ enum GameMode {
     End { score: i32 },
 }
 
+/// Difficulty settings scaling hunger loss and hazard rate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Difficulty {
+    Easy,
+    Normal,
+    Hard,
+}
+
+impl Default for Difficulty {
+    fn default() -> Self {
+        Difficulty::Normal
+    }
+}
+
+impl Difficulty {
+    fn hunger_loss(self, turn: u32) -> i32 {
+        match self {
+            Difficulty::Easy => {
+                if turn % 2 == 0 {
+                    1
+                } else {
+                    0
+                }
+            }
+            Difficulty::Normal => 1,
+            Difficulty::Hard => 2,
+        }
+    }
+
+    fn hazard_chance(self) -> i32 {
+        match self {
+            Difficulty::Easy => HAZARD_CHANCE / 2,
+            Difficulty::Normal => HAZARD_CHANCE,
+            Difficulty::Hard => HAZARD_CHANCE * 2,
+        }
+    }
+}
+
 pub use types::{Hazard, Player};
 
 /// Basic game state implementing [`GameState`].
@@ -59,6 +97,7 @@ pub struct LurhookGame {
     time_of_day: &'static str,
     turn: u32,
     rng: RandomNumberGenerator,
+    difficulty: Difficulty,
     mode: GameMode,
     meter: Option<TensionMeter>,
     reeling: bool,
@@ -72,7 +111,7 @@ pub struct LurhookGame {
 
 impl LurhookGame {
     /// Creates a new game with a generated map.
-    pub fn new(seed: u64) -> GameResult<Self> {
+    pub fn new_with_difficulty(seed: u64, difficulty: Difficulty) -> GameResult<Self> {
         let fish_types = {
             #[cfg(target_arch = "wasm32")]
             {
@@ -166,6 +205,7 @@ impl LurhookGame {
             time_of_day: TIMES[0],
             turn: 0,
             rng: RandomNumberGenerator::seeded(seed),
+            difficulty,
             mode: GameMode::Exploring,
             meter: None,
             reeling: false,
@@ -178,6 +218,11 @@ impl LurhookGame {
         };
         game.ui.set_layout(UILayout::Help);
         Ok(game)
+    }
+
+    /// Creates a new game with default (Normal) difficulty.
+    pub fn new(seed: u64) -> GameResult<Self> {
+        Self::new_with_difficulty(seed, Difficulty::Normal)
     }
 
     /// Returns the current game mode.
@@ -756,7 +801,12 @@ impl GameState for LurhookGame {
         }
         if self.ui.layout() == UILayout::Options {
             self.ui
-                .draw_options(ctx, self.input.colorblind, self.input.volume, self.input.cast)
+                .draw_options(
+                    ctx,
+                    self.input.colorblind,
+                    self.input.volume,
+                    self.input.cast,
+                )
                 .ok();
             return;
         }
@@ -1423,5 +1473,26 @@ mod tests {
             }
             _ => panic!("not aiming"),
         }
+    }
+
+    #[test]
+    fn difficulty_affects_hunger() {
+        let mut easy = LurhookGame::new_with_difficulty(0, Difficulty::Easy).unwrap();
+        let mut hard = LurhookGame::new_with_difficulty(0, Difficulty::Hard).unwrap();
+        let start_easy = easy.player.hunger;
+        easy.advance_time();
+        assert_eq!(easy.player.hunger, start_easy); // first turn no loss
+        easy.advance_time();
+        assert!(easy.player.hunger < start_easy);
+
+        let start_hard = hard.player.hunger;
+        hard.advance_time();
+        assert_eq!(start_hard - hard.player.hunger, 2);
+    }
+
+    #[test]
+    fn hazard_chance_scales() {
+        assert!(Difficulty::Hard.hazard_chance() > Difficulty::Normal.hazard_chance());
+        assert!(Difficulty::Easy.hazard_chance() < Difficulty::Normal.hazard_chance());
     }
 }
