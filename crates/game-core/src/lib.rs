@@ -16,6 +16,9 @@ use ui::{init as ui_init, UIContext, UILayout};
 const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
 const LINE_DAMAGE: i32 = 10;
+const HAZARD_DAMAGE: i32 = 1;
+const HAZARD_DURATION: u8 = 3;
+const HAZARD_CHANCE: i32 = 5; // percent chance per turn
 const MAX_HUNGER: i32 = 100;
 const EAT_RAW_FISH: i32 = 20;
 const EAT_COOKED_FISH: i32 = 40;
@@ -39,7 +42,7 @@ enum GameMode {
     End { score: i32 },
 }
 
-pub use types::Player;
+pub use types::{Hazard, Player};
 
 /// Basic game state implementing [`GameState`].
 pub struct LurhookGame {
@@ -57,6 +60,7 @@ pub struct LurhookGame {
     reeling: bool,
     palette: ui::ColorPalette,
     storm_turns: u8,
+    hazards: Vec<Hazard>,
 }
 
 impl LurhookGame {
@@ -124,6 +128,7 @@ impl LurhookGame {
             reeling: false,
             palette,
             storm_turns: 0,
+            hazards: Vec::new(),
         };
         game.ui.set_layout(ui::UILayout::Help);
         Ok(game)
@@ -177,6 +182,10 @@ impl LurhookGame {
                 if self.rng.range(0, 100) < 5 {
                     self.storm_turns = 5;
                     self.ui.add_log("A storm reduces visibility!").ok();
+                }
+                if self.rng.range(0, 100) < HAZARD_CHANCE {
+                    self.hazards.push(Hazard { pos: self.player.pos, turns: HAZARD_DURATION });
+                    self.ui.add_log("A jellyfish appears!").ok();
                 }
             }
             _ => {}
@@ -450,6 +459,26 @@ impl LurhookGame {
         }
     }
 
+    fn update_hazards(&mut self) {
+        for hazard in self.hazards.iter_mut() {
+            if hazard.turns > 0 {
+                hazard.turns -= 1;
+            }
+        }
+        for hazard in &self.hazards {
+            if hazard.pos == self.player.pos {
+                if self.player.hp > 0 {
+                    self.player.hp -= HAZARD_DAMAGE;
+                    self.ui.add_log("A jellyfish stings you!").ok();
+                }
+                if self.player.line > 0 {
+                    self.player.line = (self.player.line - LINE_DAMAGE).max(0);
+                }
+            }
+        }
+        self.hazards.retain(|h| h.turns > 0);
+    }
+
     fn eat_fish(&mut self) {
         if let Some(_fish) = self.player.inventory.pop() {
             self.player.hunger = (self.player.hunger + EAT_RAW_FISH).min(MAX_HUNGER);
@@ -532,6 +561,26 @@ impl LurhookGame {
                     self.palette.fish,
                     RGB::named(BLACK),
                     to_cp437('f'),
+                );
+            }
+        }
+    }
+
+    fn draw_hazards(&self, ctx: &mut BTerm) {
+        let (cam_x, cam_y) = self.camera();
+        for h in &self.hazards {
+            if h.pos.x >= cam_x
+                && h.pos.x < cam_x + VIEW_WIDTH
+                && h.pos.y >= cam_y
+                && h.pos.y < cam_y + VIEW_HEIGHT
+                && self.is_visible(h.pos)
+            {
+                ctx.set(
+                    h.pos.x - cam_x,
+                    h.pos.y - cam_y,
+                    self.palette.hazard,
+                    RGB::named(BLACK),
+                    to_cp437('!'),
                 );
             }
         }
@@ -636,6 +685,7 @@ impl GameState for LurhookGame {
                     return;
                 }
             }
+            self.update_hazards();
         } else if matches!(self.mode, GameMode::End { .. }) {
             if let GameMode::End { score } = self.mode {
                 ctx.cls();
@@ -651,6 +701,7 @@ impl GameState for LurhookGame {
         }
         self.draw_map(ctx);
         self.draw_fish(ctx);
+        self.draw_hazards(ctx);
         let (cam_x, cam_y) = self.camera();
         ctx.set(
             self.player.pos.x - cam_x,
@@ -1130,5 +1181,17 @@ mod tests {
         game.storm_turns = 1;
         assert!(!game.is_visible(common::Point::new(6, 0)));
         assert!(game.is_visible(common::Point::new(3, 0)));
+    }
+
+    #[test]
+    fn hazard_damages_player() {
+        let mut game = LurhookGame::default();
+        game.hazards.push(Hazard { pos: game.player.pos, turns: 1 });
+        let hp = game.player.hp;
+        let line = game.player.line;
+        game.update_hazards();
+        assert!(game.player.hp < hp);
+        assert!(game.player.line < line);
+        assert!(game.hazards.is_empty());
     }
 }

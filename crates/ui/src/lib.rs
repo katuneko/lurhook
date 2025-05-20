@@ -22,6 +22,7 @@ pub struct ColorPalette {
     pub deep: RGB,
     pub player: RGB,
     pub fish: RGB,
+    pub hazard: RGB,
 }
 
 impl Default for ColorPalette {
@@ -32,6 +33,7 @@ impl Default for ColorPalette {
             deep: RGB::named(NAVY),
             player: RGB::named(YELLOW),
             fish: RGB::named(GREEN),
+            hazard: RGB::named(RED),
         }
     }
 }
@@ -45,6 +47,7 @@ impl ColorPalette {
             deep: RGB::named(GRAY),
             player: RGB::named(WHITE),
             fish: RGB::named(RED),
+            hazard: RGB::named(RED),
         }
     }
 }

@@ -20,3 +20,10 @@ pub struct Player {
     /// Collected fish kinds.
     pub inventory: Vec<FishType>,
 }
+
+/// Temporary hazard entity that damages the player on contact.
+#[derive(Debug, Clone)]
+pub struct Hazard {
+    pub pos: Point,
+    pub turns: u8,
+}
