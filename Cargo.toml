@@ -8,7 +8,8 @@ members = [
     "crates/ui",
     "crates/data",
     "crates/common",
-    "crates/codex"
+    "crates/codex",
+    "crates/audio"
 ]
 
 [package]
