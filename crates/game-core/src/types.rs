@@ -21,6 +21,14 @@ pub struct Player {
     pub canned_food: i32,
     /// Collected fish kinds.
     pub inventory: Vec<FishType>,
+    /// Gear and consumable items held.
+    pub items: Vec<data::ItemType>,
+    /// Equipped fishing rod.
+    pub rod: Option<data::ItemType>,
+    /// Equipped reel.
+    pub reel: Option<data::ItemType>,
+    /// Equipped lure/bait.
+    pub lure: Option<data::ItemType>,
 }
 
 /// Temporary hazard entity that damages the player on contact.

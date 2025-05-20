@@ -184,13 +184,14 @@ impl UIContext {
     }
 
     /// Draws the player's inventory when in `Inventory` layout.
-    pub fn draw_inventory(&self, ctx: &mut BTerm, items: &[data::FishType]) -> GameResult<()> {
+    pub fn draw_inventory(&self, ctx: &mut BTerm, lines: &[String], cursor: usize) -> GameResult<()> {
         if self.layout != UILayout::Inventory {
             return Ok(());
         }
         ctx.print_centered(10, "Inventory");
-        for (i, line) in inventory_strings(items).iter().enumerate() {
-            ctx.print_centered(11 + i as i32, line);
+        for (i, line) in lines.iter().enumerate() {
+            let prefix = if i == cursor { "> " } else { "  " };
+            ctx.print_centered(11 + i as i32, format!("{}{}", prefix, line));
         }
         Ok(())
     }
