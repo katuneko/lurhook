@@ -1,5 +1,6 @@
 //! Fishing minigame utilities.
 
+use data::FightStyle;
 use mapgen::TileKind;
 
 /// Result of a [`TensionMeter::update`] call.
@@ -26,16 +27,19 @@ pub struct TensionMeter {
     pub duration: i32,
     /// Strength applied by the hooked fish each turn.
     pub strength: i32,
+    /// Behavior of the hooked fish.
+    pub style: FightStyle,
 }
 
 impl TensionMeter {
     /// Creates a new [`TensionMeter`] with the given fish strength.
-    pub fn new(strength: i32) -> Self {
+    pub fn new(strength: i32, style: FightStyle) -> Self {
         Self {
             tension: 0,
             max_tension: 100,
             duration: 5,
             strength,
+            style,
         }
     }
 
@@ -49,7 +53,26 @@ impl TensionMeter {
         if reel {
             self.tension = (self.tension - 10).max(0);
         } else {
-            self.tension += self.strength;
+            match self.style {
+                FightStyle::Aggressive => {
+                    self.tension += self.strength * 2;
+                }
+                FightStyle::Endurance => {
+                    let bonus = if self.duration > 2 {
+                        self.strength
+                    } else {
+                        self.strength / 2
+                    };
+                    self.tension += bonus;
+                }
+                FightStyle::Evasive => {
+                    if self.tension <= 5 {
+                        self.tension = 0;
+                    } else {
+                        self.tension += self.strength;
+                    }
+                }
+            }
         }
         self.duration -= 1;
 
@@ -84,7 +107,7 @@ pub fn bite_probability(tile: TileKind, bait_bonus: f32) -> f32 {
 
 impl Default for TensionMeter {
     fn default() -> Self {
-        Self::new(5)
+        Self::new(5, FightStyle::Aggressive)
     }
 }
 
@@ -100,22 +123,22 @@ mod tests {
     fn tension_increases() {
         let mut meter = TensionMeter::default();
         assert_eq!(meter.update(false), MeterState::Ongoing);
-        assert_eq!(meter.tension, meter.strength);
+        assert_eq!(meter.tension, meter.strength * 2);
     }
 
     #[test]
     fn reel_reduces_tension() {
-        let mut meter = TensionMeter::new(10);
-        meter.update(false); // tension 10
-        meter.update(true); // reel
-        assert!(meter.tension < 10);
+        let mut meter = TensionMeter::new(10, FightStyle::Aggressive);
+        meter.update(false); // tension 20
+        meter.update(true); // reel -> 10
+        assert!(meter.tension < 20);
     }
 
     #[test]
     fn breaks_when_exceeding_max() {
         let mut meter = TensionMeter {
             max_tension: 5,
-            ..TensionMeter::new(10)
+            ..TensionMeter::new(10, FightStyle::Aggressive)
         };
         assert_eq!(meter.update(false), MeterState::Broken);
     }
@@ -124,14 +147,14 @@ mod tests {
     fn succeeds_after_duration() {
         let mut meter = TensionMeter {
             duration: 1,
-            ..TensionMeter::new(1)
+            ..TensionMeter::new(1, FightStyle::Aggressive)
         };
         assert_eq!(meter.update(false), MeterState::Success);
     }
 
     #[test]
     fn repeated_reel_zeroes_tension() {
-        let mut meter = TensionMeter::new(5);
+        let mut meter = TensionMeter::new(5, FightStyle::Aggressive);
         meter.tension = 20;
         for _ in 0..3 {
             meter.update(true);
@@ -141,7 +164,7 @@ mod tests {
 
     #[test]
     fn lost_when_tension_drops_to_zero() {
-        let mut meter = TensionMeter::new(5);
+        let mut meter = TensionMeter::new(5, FightStyle::Aggressive);
         meter.tension = 10;
         let state = meter.update(true);
         assert_eq!(state, MeterState::Lost);
@@ -152,6 +175,7 @@ mod tests {
         let meter = TensionMeter::default();
         assert_eq!(meter.strength, 5);
         assert_eq!(meter.max_tension, 100);
+        assert_eq!(meter.style, FightStyle::Aggressive);
     }
 
     #[test]
@@ -167,5 +191,31 @@ mod tests {
         let bonus = bite_probability(TileKind::Land, 0.2);
         assert!(bonus > base);
         assert!(bonus <= 1.0);
+    }
+
+    #[test]
+    fn aggressive_style_spikes_tension() {
+        let mut meter = TensionMeter::new(2, FightStyle::Aggressive);
+        meter.update(false);
+        assert_eq!(meter.tension, 4);
+    }
+
+    #[test]
+    fn endurance_style_slow_end() {
+        let mut meter = TensionMeter::new(4, FightStyle::Endurance);
+        meter.update(false); // duration 5 -> add 4
+        for _ in 0..3 {
+            meter.update(false);
+        }
+        // near the end strength halves
+        assert!(meter.tension < 4 * 4);
+    }
+
+    #[test]
+    fn evasive_style_can_escape() {
+        let mut meter = TensionMeter::new(3, FightStyle::Evasive);
+        meter.tension = 5;
+        let state = meter.update(false);
+        assert_eq!(state, MeterState::Lost);
     }
 }

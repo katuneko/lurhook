@@ -5,7 +5,8 @@
     "rarity": 0.5,
     "strength": 5,
     "min_depth": 0,
-    "max_depth": 20
+    "max_depth": 20,
+    "fight_style": "Endurance"
   },
   {
     "id": "LUR1",
@@ -13,7 +14,8 @@
     "rarity": 0.8,
     "strength": 12,
     "min_depth": 10,
-    "max_depth": 30
+    "max_depth": 30,
+    "fight_style": "Aggressive"
   },
   {
     "id": "SFTU",
@@ -21,7 +23,8 @@
     "rarity": 0.4,
     "strength": 8,
     "min_depth": 20,
-    "max_depth": 60
+    "max_depth": 60,
+    "fight_style": "Endurance"
   },
   {
     "id": "SHCR",
@@ -29,7 +32,8 @@
     "rarity": 0.6,
     "strength": 6,
     "min_depth": 5,
-    "max_depth": 25
+    "max_depth": 25,
+    "fight_style": "Evasive"
   },
   {
     "id": "CRJE",
@@ -37,7 +41,8 @@
     "rarity": 0.3,
     "strength": 3,
     "min_depth": 30,
-    "max_depth": 80
+    "max_depth": 80,
+    "fight_style": "Aggressive"
   },
   {
     "id": "IRPI",
@@ -45,7 +50,8 @@
     "rarity": 0.7,
     "strength": 9,
     "min_depth": 15,
-    "max_depth": 40
+    "max_depth": 40,
+    "fight_style": "Aggressive"
   },
   {
     "id": "TWSA",
@@ -53,7 +59,8 @@
     "rarity": 0.5,
     "strength": 7,
     "min_depth": 0,
-    "max_depth": 15
+    "max_depth": 15,
+    "fight_style": "Endurance"
   },
   {
     "id": "AZSH",
@@ -61,7 +68,8 @@
     "rarity": 0.2,
     "strength": 15,
     "min_depth": 40,
-    "max_depth": 100
+    "max_depth": 100,
+    "fight_style": "Aggressive"
   },
   {
     "id": "GDKO",
@@ -69,7 +77,8 @@
     "rarity": 0.1,
     "strength": 6,
     "min_depth": 5,
-    "max_depth": 10
+    "max_depth": 10,
+    "fight_style": "Evasive"
   },
   {
     "id": "PHEL",
@@ -77,7 +86,8 @@
     "rarity": 0.25,
     "strength": 13,
     "min_depth": 60,
-    "max_depth": 120
+    "max_depth": 120,
+    "fight_style": "Evasive"
   },
   {
     "id": "RGUP",
@@ -85,7 +95,8 @@
     "rarity": 0.9,
     "strength": 2,
     "min_depth": 0,
-    "max_depth": 5
+    "max_depth": 5,
+    "fight_style": "Aggressive"
   },
   {
     "id": "MGSP",
@@ -93,7 +104,8 @@
     "rarity": 0.15,
     "strength": 10,
     "min_depth": 50,
-    "max_depth": 70
+    "max_depth": 70,
+    "fight_style": "Aggressive"
   },
   {
     "id": "NBRY",
@@ -101,6 +113,7 @@
     "rarity": 0.05,
     "strength": 14,
     "min_depth": 80,
-    "max_depth": 200
+    "max_depth": 200,
+    "fight_style": "Endurance"
   }
 ]

@@ -218,7 +218,10 @@ impl LurhookGame {
                     self.ui.add_log("A storm reduces visibility!").ok();
                 }
                 if self.rng.range(0, 100) < HAZARD_CHANCE {
-                    self.hazards.push(Hazard { pos: self.player.pos, turns: HAZARD_DURATION });
+                    self.hazards.push(Hazard {
+                        pos: self.player.pos,
+                        turns: HAZARD_DURATION,
+                    });
                     self.ui.add_log("A jellyfish appears!").ok();
                 }
             }
@@ -453,7 +456,7 @@ impl LurhookGame {
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
                     if let Some(f) = self.fishes.first() {
-                        let mut m = TensionMeter::new(f.kind.strength);
+                        let mut m = TensionMeter::new(f.kind.strength, f.kind.fight_style);
                         m.max_tension += self.player.tension_bonus;
                         self.meter = Some(m);
                     } else {
@@ -1252,7 +1255,10 @@ mod tests {
     #[test]
     fn hazard_damages_player() {
         let mut game = LurhookGame::default();
-        game.hazards.push(Hazard { pos: game.player.pos, turns: 1 });
+        game.hazards.push(Hazard {
+            pos: game.player.pos,
+            turns: 1,
+        });
         let hp = game.player.hp;
         let line = game.player.line;
         game.update_hazards();
