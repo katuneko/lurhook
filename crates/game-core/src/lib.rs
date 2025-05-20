@@ -285,6 +285,24 @@ impl LurhookGame {
     /// Handles input and updates the player position accordingly.
     fn handle_input(&mut self, ctx: &mut BTerm) {
         self.reeling = false;
+        if ctx.left_click {
+            let (mx, my) = ctx.mouse_pos;
+            if mx < VIEW_WIDTH as i32 && my < VIEW_HEIGHT as i32 {
+                let (cam_x, cam_y) = self.camera();
+                let target = Point::new(cam_x + mx, cam_y + my);
+                match &mut self.mode {
+                    GameMode::Exploring => {
+                        self.player.pos = target;
+                        self.depth = self.map.depth(target);
+                    }
+                    GameMode::Aiming { target: t } => {
+                        t.x = target.x.clamp(0, self.map.width as i32 - 1);
+                        t.y = target.y.clamp(0, self.map.height as i32 - 1);
+                    }
+                    _ => {}
+                }
+            }
+        }
         if let Some(key) = ctx.key {
             self.handle_input_key(Some(key), ctx);
         }
@@ -697,8 +715,9 @@ impl Default for LurhookGame {
 impl GameState for LurhookGame {
     fn tick(&mut self, ctx: &mut BTerm) {
         let key = ctx.key;
+        let click = ctx.left_click;
         self.handle_input(ctx);
-        if key.is_some() {
+        if key.is_some() || click {
             self.advance_time();
             match self.mode {
                 GameMode::Exploring => {
@@ -1070,6 +1089,30 @@ mod tests {
         }
     }
 
+    fn dummy_ctx_click(x: i32, y: i32) -> BTerm {
+        BTerm {
+            width_pixels: 0,
+            height_pixels: 0,
+            original_height_pixels: 0,
+            original_width_pixels: 0,
+            fps: 0.0,
+            frame_time_ms: 0.0,
+            active_console: 0,
+            key: None,
+            mouse_pos: (x, y),
+            left_click: true,
+            shift: false,
+            control: false,
+            alt: false,
+            web_button: None,
+            quitting: false,
+            post_scanlines: false,
+            post_screenburn: false,
+            screen_burn_color: RGB::from_f32(0.0, 0.0, 0.0),
+            mouse_visible: true,
+        }
+    }
+
     #[test]
     fn pressing_s_saves_game() {
         let mut game = LurhookGame::default();
@@ -1356,5 +1399,29 @@ mod tests {
         std::fs::remove_file(CONFIG_PATH).unwrap();
         assert_ne!(loaded.cast, orig);
         assert_eq!(loaded.cast, game.input.cast);
+    }
+
+    #[test]
+    fn left_click_moves_player() {
+        let mut game = LurhookGame::default();
+        let (cam_x, cam_y) = game.camera();
+        let mut ctx = dummy_ctx_click(1, 1);
+        game.handle_input(&mut ctx);
+        assert_eq!(game.player.pos, common::Point::new(cam_x + 1, cam_y + 1));
+    }
+
+    #[test]
+    fn left_click_sets_aim_target() {
+        let mut game = LurhookGame::default();
+        game.cast();
+        let (cam_x, cam_y) = game.camera();
+        let mut ctx = dummy_ctx_click(2, 2);
+        game.handle_input(&mut ctx);
+        match game.mode {
+            GameMode::Aiming { target } => {
+                assert_eq!(target, common::Point::new(cam_x + 2, cam_y + 2));
+            }
+            _ => panic!("not aiming"),
+        }
     }
 }
