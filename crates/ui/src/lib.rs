@@ -312,6 +312,7 @@ mod tests {
             strength: 1,
             min_depth: 0,
             max_depth: 1,
+            fight_style: data::FightStyle::Aggressive,
         };
         assert_eq!(
             inventory_strings(&[fish.clone()]),

@@ -3,6 +3,17 @@
 use common::{GameError, GameResult};
 use serde::Deserialize;
 
+/// Fighting behavior for a fish.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+pub enum FightStyle {
+    /// Sudden large tension spikes.
+    Aggressive,
+    /// Long battle with gradually decreasing strength.
+    Endurance,
+    /// Tends to flee if the line goes slack.
+    Evasive,
+}
+
 /// Fish species parameters loaded from JSON.
 #[derive(Clone, Debug, Deserialize)]
 pub struct FishType {
@@ -12,6 +23,7 @@ pub struct FishType {
     pub strength: i32,
     pub min_depth: i32,
     pub max_depth: i32,
+    pub fight_style: FightStyle,
 }
 
 /// Loads a list of [`FishType`] from the given JSON file path.
@@ -36,6 +48,7 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
             let mut strength = 0;
             let mut min_depth = 0;
             let mut max_depth = 0;
+            let mut fight_style = FightStyle::Aggressive;
             for line in body.lines() {
                 let line = line.trim().trim_end_matches(',');
                 if line.is_empty() {
@@ -51,6 +64,14 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
                     "strength" => strength = val.parse().unwrap_or(0),
                     "min_depth" => min_depth = val.parse().unwrap_or(0),
                     "max_depth" => max_depth = val.parse().unwrap_or(0),
+                    "fight_style" => {
+                        fight_style = match val {
+                            "Aggressive" => FightStyle::Aggressive,
+                            "Endurance" => FightStyle::Endurance,
+                            "Evasive" => FightStyle::Evasive,
+                            _ => FightStyle::Aggressive,
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -62,6 +83,7 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
                     strength,
                     min_depth,
                     max_depth,
+                    fight_style,
                 });
             }
         }
@@ -160,10 +182,11 @@ mod tests {
 
     #[test]
     fn parse_simple_data() {
-        let json = "[\n  {\n    \"id\": \"A\",\n    \"name\": \"A\",\n    \"rarity\": 1.0,\n    \"strength\": 1,\n    \"min_depth\": 0,\n    \"max_depth\": 1\n  }\n]";
+        let json = "[\n  {\n    \"id\": \"A\",\n    \"name\": \"A\",\n    \"rarity\": 1.0,\n    \"strength\": 1,\n    \"min_depth\": 0,\n    \"max_depth\": 1,\n    \"fight_style\": \"Aggressive\"\n  }\n]";
         let fishes = parse_fish_json(json).expect("fishes");
         assert_eq!(fishes.len(), 1);
         assert_eq!(fishes[0].id, "A");
+        assert_eq!(fishes[0].fight_style, FightStyle::Aggressive);
     }
 
     #[test]

@@ -92,7 +92,8 @@
     "rarity": 0.8,      // 0–1 低いほどレア
     "strength": 12,     // テンション増加係数
     "min_depth": 10,
-    "max_depth": 30
+    "max_depth": 30,
+    "fight_style": "Aggressive" // ファイトパターン
   }
 ]
 ```
@@ -132,6 +133,7 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 ```
 
 * テンションが0になった場合はフックアウトし失敗扱い。
+* 魚の `fight_style` によりテンション増加挙動が変化する。
 
 ### 6.3 視界制限
 

@@ -1,8 +1,8 @@
 //! Ecology system stubs.
 use bracket_lib::prelude::RandomNumberGenerator;
 use common::{GameError, GameResult, Point};
-use mapgen::{Map, TileKind};
 use data::FishType;
+use mapgen::{Map, TileKind};
 
 /// Fish entity placeholder.
 #[derive(Clone, Debug)]
@@ -22,7 +22,10 @@ pub fn apply_current(map: &Map, fishes: &mut [Fish], drift: Point) {
         let mut new = Point::new(fish.position.x + drift.x, fish.position.y + drift.y);
         new.x = new.x.clamp(0, map.width as i32 - 1);
         new.y = new.y.clamp(0, map.height as i32 - 1);
-        if matches!(map.tiles[map.idx(new)], TileKind::ShallowWater | TileKind::DeepWater) {
+        if matches!(
+            map.tiles[map.idx(new)],
+            TileKind::ShallowWater | TileKind::DeepWater
+        ) {
             fish.position = new;
         }
     }
@@ -64,7 +67,10 @@ pub fn update_fish(
         x = x.clamp(0, map.width as i32 - 1);
         y = y.clamp(0, map.height as i32 - 1);
         let new_pt = Point::new(x, y);
-        if matches!(map.tiles[map.idx(new_pt)], TileKind::ShallowWater | TileKind::DeepWater) {
+        if matches!(
+            map.tiles[map.idx(new_pt)],
+            TileKind::ShallowWater | TileKind::DeepWater
+        ) {
             fishes[i].position = new_pt;
         }
     }
@@ -148,9 +154,9 @@ pub fn spawn_fish_population(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mapgen::generate;
-    use data::load_fish_types;
     use bracket_lib::prelude::RandomNumberGenerator;
+    use data::load_fish_types;
+    use mapgen::generate;
 
     #[test]
     fn spawn_one_fish() {
@@ -183,8 +189,14 @@ mod tests {
         let mut fish = spawn_fish(&mut map, &types).expect("fish");
         let mut rng = RandomNumberGenerator::seeded(1);
         for _ in 0..20 {
-            update_fish(&map, std::slice::from_mut(&mut fish), &mut rng, "Day", Point::new(0,0))
-                .unwrap();
+            update_fish(
+                &map,
+                std::slice::from_mut(&mut fish),
+                &mut rng,
+                "Day",
+                Point::new(0, 0),
+            )
+            .unwrap();
             assert!(fish.position.x >= 0 && fish.position.x < map.width as i32);
             assert!(fish.position.y >= 0 && fish.position.y < map.height as i32);
             let tile = map.tiles[map.idx(fish.position)];
@@ -214,15 +226,22 @@ mod tests {
             strength: 1,
             min_depth: 0,
             max_depth: 10,
+            fight_style: data::FightStyle::Aggressive,
         };
         let mut fishes = vec![
-            Fish { kind: ft.clone(), position: Point::new(2, 2) },
-            Fish { kind: ft.clone(), position: Point::new(5, 2) },
+            Fish {
+                kind: ft.clone(),
+                position: Point::new(2, 2),
+            },
+            Fish {
+                kind: ft.clone(),
+                position: Point::new(5, 2),
+            },
         ];
         let before = (fishes[0].position.x - fishes[1].position.x).abs()
             + (fishes[0].position.y - fishes[1].position.y).abs();
         let mut rng = RandomNumberGenerator::seeded(1);
-        update_fish(&map, &mut fishes, &mut rng, "Day", Point::new(0,0)).unwrap();
+        update_fish(&map, &mut fishes, &mut rng, "Day", Point::new(0, 0)).unwrap();
         let after = (fishes[0].position.x - fishes[1].position.x).abs()
             + (fishes[0].position.y - fishes[1].position.y).abs();
         assert!(after < before || after == 0);
@@ -241,15 +260,40 @@ mod tests {
             strength: 1,
             min_depth: 0,
             max_depth: 10,
+            fight_style: data::FightStyle::Aggressive,
         };
-        let mut day_fish = Fish { kind: ft.clone(), position: Point::new(5, 5) };
-        let mut night_fish = Fish { kind: ft.clone(), position: Point::new(5, 5) };
+        let mut day_fish = Fish {
+            kind: ft.clone(),
+            position: Point::new(5, 5),
+        };
+        let mut night_fish = Fish {
+            kind: ft.clone(),
+            position: Point::new(5, 5),
+        };
         let mut rng_day = RandomNumberGenerator::seeded(1);
         let mut rng_night = RandomNumberGenerator::seeded(1);
-        update_fish(&map, std::slice::from_mut(&mut day_fish), &mut rng_day, "Day", Point::new(0,0)).unwrap();
-        update_fish(&map, std::slice::from_mut(&mut night_fish), &mut rng_night, "Night", Point::new(0,0)).unwrap();
-        let day_dist = (day_fish.position.x - 5).abs().max((day_fish.position.y - 5).abs());
-        let night_dist = (night_fish.position.x - 5).abs().max((night_fish.position.y - 5).abs());
+        update_fish(
+            &map,
+            std::slice::from_mut(&mut day_fish),
+            &mut rng_day,
+            "Day",
+            Point::new(0, 0),
+        )
+        .unwrap();
+        update_fish(
+            &map,
+            std::slice::from_mut(&mut night_fish),
+            &mut rng_night,
+            "Night",
+            Point::new(0, 0),
+        )
+        .unwrap();
+        let day_dist = (day_fish.position.x - 5)
+            .abs()
+            .max((day_fish.position.y - 5).abs());
+        let night_dist = (night_fish.position.x - 5)
+            .abs()
+            .max((night_fish.position.y - 5).abs());
         assert!(night_dist >= day_dist);
         assert!(night_dist <= 2);
     }
@@ -267,8 +311,12 @@ mod tests {
             strength: 1,
             min_depth: 0,
             max_depth: 10,
+            fight_style: data::FightStyle::Aggressive,
         };
-        let mut fish = Fish { kind: ft, position: Point::new(2, 2) };
+        let mut fish = Fish {
+            kind: ft,
+            position: Point::new(2, 2),
+        };
         apply_current(&map, std::slice::from_mut(&mut fish), Point::new(1, 0));
         assert_eq!(fish.position, Point::new(3, 2));
     }
