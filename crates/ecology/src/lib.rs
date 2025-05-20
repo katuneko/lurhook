@@ -39,8 +39,11 @@ pub fn update_fish(
     time_of_day: &str,
     drift: Point,
 ) -> GameResult<()> {
-    let speed = if time_of_day == "Night" { 2 } else { 1 };
     for i in 0..fishes.len() {
+        let mut speed = if time_of_day == "Night" { 2 } else { 1 };
+        if fishes[i].kind.legendary {
+            speed += 1;
+        }
         let (dx_rand, dy_rand) = (rng.range(-speed, speed + 1), rng.range(-speed, speed + 1));
         let mut dx = dx_rand;
         let mut dy = dy_rand;
@@ -227,6 +230,7 @@ mod tests {
             min_depth: 0,
             max_depth: 10,
             fight_style: data::FightStyle::Aggressive,
+            legendary: false,
         };
         let mut fishes = vec![
             Fish {
@@ -261,6 +265,7 @@ mod tests {
             min_depth: 0,
             max_depth: 10,
             fight_style: data::FightStyle::Aggressive,
+            legendary: false,
         };
         let mut day_fish = Fish {
             kind: ft.clone(),
@@ -312,6 +317,7 @@ mod tests {
             min_depth: 0,
             max_depth: 10,
             fight_style: data::FightStyle::Aggressive,
+            legendary: false,
         };
         let mut fish = Fish {
             kind: ft,
@@ -319,5 +325,38 @@ mod tests {
         };
         apply_current(&map, std::slice::from_mut(&mut fish), Point::new(1, 0));
         assert_eq!(fish.position, Point::new(3, 2));
+    }
+
+    #[test]
+    fn legendary_moves_faster() {
+        let mut map = Map::new(10, 10);
+        for t in map.tiles.iter_mut() {
+            *t = TileKind::ShallowWater;
+        }
+        let ft = FishType {
+            id: "L".into(),
+            name: "Legendary".into(),
+            rarity: 1.0,
+            strength: 1,
+            min_depth: 0,
+            max_depth: 10,
+            fight_style: data::FightStyle::Aggressive,
+            legendary: true,
+        };
+        let mut fish = Fish {
+            kind: ft,
+            position: Point::new(5, 5),
+        };
+        let mut rng = RandomNumberGenerator::seeded(1);
+        update_fish(
+            &map,
+            std::slice::from_mut(&mut fish),
+            &mut rng,
+            "Day",
+            Point::new(0, 0),
+        )
+        .unwrap();
+        let dist = (fish.position.x - 5).abs().max((fish.position.y - 5).abs());
+        assert!(dist >= 1);
     }
 }

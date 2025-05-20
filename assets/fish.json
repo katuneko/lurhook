@@ -114,6 +114,7 @@
     "strength": 14,
     "min_depth": 80,
     "max_depth": 200,
-    "fight_style": "Endurance"
+    "fight_style": "Endurance",
+    "legendary": true
   }
 ]
