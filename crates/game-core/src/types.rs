@@ -15,6 +15,8 @@ pub struct Player {
     pub bait_bonus: f32,
     /// Bonus added to maximum tension from equipped rod.
     pub tension_bonus: i32,
+    /// Multiplier applied when reeling in line tension.
+    pub reel_factor: f32,
     /// Number of canned food items carried.
     pub canned_food: i32,
     /// Collected fish kinds.
