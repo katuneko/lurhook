@@ -70,7 +70,11 @@ $ wasm-pack build --target web
 | テンション調整 | r                           |
 | インベントリ  | i                           |
 | 生食      | x                           |
+| 調理      | f                           |
+| 携行食使用 | g                           |
+| ログスクロール | PgUp/PgDn                   |
 | ヘルプ      | F1                          |
+| ラン終了    | Enter                       |
 | セーブ     | S                           |
 | 終了      | Q                           |
 
