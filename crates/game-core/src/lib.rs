@@ -271,6 +271,17 @@ impl LurhookGame {
         let _ = self.input.save(CONFIG_PATH);
     }
 
+    fn cycle_cast_key(&mut self) {
+        use VirtualKeyCode::*;
+        self.input.cast = match self.input.cast {
+            C => X,
+            X => Z,
+            Z => C,
+            _ => C,
+        };
+        let _ = self.input.save(CONFIG_PATH);
+    }
+
     /// Handles input and updates the player position accordingly.
     fn handle_input(&mut self, ctx: &mut BTerm) {
         self.reeling = false;
@@ -328,8 +339,24 @@ impl LurhookGame {
                 return;
             }
             if self.ui.layout() == UILayout::Options {
-                if key == VirtualKeyCode::C {
-                    self.toggle_colorblind();
+                match key {
+                    VirtualKeyCode::C => self.toggle_colorblind(),
+                    VirtualKeyCode::Plus => {
+                        if self.input.volume < 10 {
+                            self.input.volume += 1;
+                            let _ = self.input.save(CONFIG_PATH);
+                        }
+                    }
+                    VirtualKeyCode::Minus => {
+                        if self.input.volume > 0 {
+                            self.input.volume -= 1;
+                            let _ = self.input.save(CONFIG_PATH);
+                        }
+                    }
+                    VirtualKeyCode::Key1 => {
+                        self.cycle_cast_key();
+                    }
+                    _ => {}
                 }
                 return;
             }
@@ -709,7 +736,9 @@ impl GameState for LurhookGame {
             return;
         }
         if self.ui.layout() == UILayout::Options {
-            self.ui.draw_options(ctx, self.input.colorblind).ok();
+            self.ui
+                .draw_options(ctx, self.input.colorblind, self.input.volume, self.input.cast)
+                .ok();
             return;
         }
         self.draw_map(ctx);
@@ -1315,5 +1344,17 @@ mod tests {
         let loaded = InputConfig::load(CONFIG_PATH).unwrap();
         std::fs::remove_file(CONFIG_PATH).unwrap();
         assert_eq!(loaded.colorblind, game.input.colorblind);
+    }
+
+    #[test]
+    fn cycle_cast_key_persists() {
+        let mut game = LurhookGame::default();
+        let _ = std::fs::remove_file(CONFIG_PATH);
+        let orig = game.input.cast;
+        game.cycle_cast_key();
+        let loaded = InputConfig::load(CONFIG_PATH).unwrap();
+        std::fs::remove_file(CONFIG_PATH).unwrap();
+        assert_ne!(loaded.cast, orig);
+        assert_eq!(loaded.cast, game.input.cast);
     }
 }

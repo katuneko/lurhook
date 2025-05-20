@@ -1,5 +1,5 @@
 //! UI context stubs.
-use bracket_lib::prelude::{BTerm, CYAN, GRAY, GREEN, NAVY, RED, RGB, WHITE, YELLOW};
+use bracket_lib::prelude::{BTerm, CYAN, GRAY, GREEN, NAVY, RED, RGB, WHITE, YELLOW, VirtualKeyCode};
 
 /// UI layout type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -215,11 +215,11 @@ impl UIContext {
     }
 
     /// Draws options text when in `Options` layout.
-    pub fn draw_options(&self, ctx: &mut BTerm, colorblind: bool) -> GameResult<()> {
+    pub fn draw_options(&self, ctx: &mut BTerm, colorblind: bool, volume: u8, cast_key: VirtualKeyCode) -> GameResult<()> {
         if self.layout != UILayout::Options {
             return Ok(());
         }
-        for (i, line) in options_strings(colorblind).iter().enumerate() {
+        for (i, line) in options_strings(colorblind, volume, cast_key).iter().enumerate() {
             ctx.print_centered(5 + i as i32, line);
         }
         Ok(())
@@ -260,13 +260,15 @@ fn help_strings() -> Vec<String> {
     ]
 }
 
-fn options_strings(colorblind: bool) -> Vec<String> {
+fn options_strings(colorblind: bool, volume: u8, cast_key: VirtualKeyCode) -> Vec<String> {
     vec![
         "Options:".to_string(),
         format!(
             "C: Colorblind Mode [{}]",
             if colorblind { "On" } else { "Off" }
         ),
+        format!("+/-: Volume {}", volume),
+        format!("1: Cast Key [{:?}]", cast_key),
         "O: Back".to_string(),
     ]
 }
@@ -370,9 +372,9 @@ mod tests {
 
     #[test]
     fn options_strings_show_status() {
-        let lines_on = options_strings(true);
+        let lines_on = options_strings(true, 5, VirtualKeyCode::C);
         assert!(lines_on.iter().any(|l| l.contains("On")));
-        let lines_off = options_strings(false);
+        let lines_off = options_strings(false, 5, VirtualKeyCode::C);
         assert!(lines_off.iter().any(|l| l.contains("Off")));
     }
 }
