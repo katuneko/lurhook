@@ -1,4 +1,4 @@
-use super::{LurhookGame, GameMode};
+use super::{Difficulty, GameMode, LurhookGame};
 use bracket_lib::prelude::*;
 
 pub enum AppState {
@@ -13,7 +13,9 @@ pub struct LurhookApp {
 
 impl LurhookApp {
     pub fn new() -> Self {
-        Self { state: AppState::Menu }
+        Self {
+            state: AppState::Menu,
+        }
     }
 
     fn update_state(&mut self, ctx: &mut BTerm) -> bool {
@@ -21,8 +23,22 @@ impl LurhookApp {
         let key = ctx.key;
         match &mut self.state {
             AppState::Menu => match key {
-                Some(Return) => {
-                    self.state = AppState::Running(Box::default());
+                Some(Key1) => {
+                    self.state = AppState::Running(Box::new(
+                        LurhookGame::new_with_difficulty(0, Difficulty::Easy).unwrap(),
+                    ));
+                    false
+                }
+                Some(Key2) => {
+                    self.state = AppState::Running(Box::new(
+                        LurhookGame::new_with_difficulty(0, Difficulty::Normal).unwrap(),
+                    ));
+                    false
+                }
+                Some(Key3) => {
+                    self.state = AppState::Running(Box::new(
+                        LurhookGame::new_with_difficulty(0, Difficulty::Hard).unwrap(),
+                    ));
                     false
                 }
                 Some(Q) => true,
@@ -64,7 +80,8 @@ impl GameState for LurhookApp {
             AppState::Menu => {
                 ctx.cls();
                 ctx.print_centered(10, "Lurhook");
-                ctx.print_centered(12, "Press Enter to Start, Q to Quit");
+                ctx.print_centered(12, "1: Easy  2: Normal  3: Hard");
+                ctx.print_centered(14, "Press Q to Quit");
             }
             AppState::Running(_) => {
                 // game.tick already rendered
@@ -111,7 +128,7 @@ mod tests {
     #[test]
     fn enter_from_menu_starts_game() {
         let mut app = LurhookApp::new();
-        let mut ctx = dummy_ctx(VirtualKeyCode::Return);
+        let mut ctx = dummy_ctx(VirtualKeyCode::Key1);
         app.update_state(&mut ctx);
         match app.state {
             AppState::Running(_) => {}
@@ -121,7 +138,9 @@ mod tests {
 
     #[test]
     fn summary_return_goes_to_menu() {
-        let mut app = LurhookApp { state: AppState::Summary(10) };
+        let mut app = LurhookApp {
+            state: AppState::Summary(10),
+        };
         let mut ctx = dummy_ctx(VirtualKeyCode::Return);
         app.update_state(&mut ctx);
         assert!(matches!(app.state, AppState::Menu));

@@ -9,9 +9,12 @@ impl LurhookGame {
         let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
         self.time_of_day = TIMES[idx as usize];
         if self.player.hunger > 0 {
-            self.player.hunger -= 1;
-            if self.player.hunger == 0 {
-                self.ui.add_log("You are starving!").ok();
+            let loss = self.difficulty.hunger_loss(self.turn);
+            if loss > 0 {
+                self.player.hunger = (self.player.hunger - loss).max(0);
+                if self.player.hunger == 0 {
+                    self.ui.add_log("You are starving!").ok();
+                }
             }
         } else if self.player.hp > 0 {
             self.player.hp -= 1;
@@ -35,7 +38,7 @@ impl LurhookGame {
                     self.storm_turns = 5;
                     self.ui.add_log("A storm reduces visibility!").ok();
                 }
-                if self.rng.range(0, 100) < HAZARD_CHANCE {
+                if self.rng.range(0, 100) < self.difficulty.hazard_chance() {
                     self.hazards.push(Hazard {
                         pos: self.player.pos,
                         turns: HAZARD_DURATION,
@@ -60,7 +63,11 @@ impl LurhookGame {
         match self.map.tiles[idx] {
             TileKind::DeepWater => {
                 let base = 5;
-                if self.storm_turns > 0 { base.min(3) } else { base }
+                if self.storm_turns > 0 {
+                    base.min(3)
+                } else {
+                    base
+                }
             }
             _ => i32::MAX,
         }

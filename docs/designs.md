@@ -172,6 +172,11 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 * 陸上では探索中に低確率で休息 (HP+1) または缶詰入手イベントが発生。
 * 水域では低確率でクラゲが出現し、接触するとHPを1失いライン強度も10減少する。
 
+### 6.4 難易度システム
+
+* タイトル画面で3段階の難易度を選択。
+* 難易度に応じて満腹度減少量とクラゲ出現率を倍率調整する。
+
 ## 7. モジュール I/F 詳細
 
 | Producer | Consumer  | 関数 / Channel                   | 内容            |
