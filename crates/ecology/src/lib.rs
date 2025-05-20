@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn spawn_one_fish() {
-        let mut map = generate(0).expect("map");
+        let mut map = generate(0, 120, 80).expect("map");
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let types = load_fish_types(path).expect("types");
         let fish = spawn_fish(&mut map, &types).expect("fish");
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn spawn_many_fish() {
-        let mut map = generate(0).expect("map");
+        let mut map = generate(0, 120, 80).expect("map");
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let types = load_fish_types(path).expect("types");
         let fishes = spawn_fish_population(&mut map, &types, 5).expect("fishes");
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn fish_moves_within_water_bounds() {
-        let mut map = generate(0).expect("map");
+        let mut map = generate(0, 120, 80).expect("map");
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fish.json");
         let types = load_fish_types(path).expect("types");
         let mut fish = spawn_fish(&mut map, &types).expect("fish");

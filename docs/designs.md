@@ -23,6 +23,7 @@
 * **mapgen**: BSP + ノイズ生成、タイル深度計算。
 * **ecology**: 魚スポーン & 行動 AI。
 * **fishing**: キャスト／テンションバー／捕獲判定。
+* **area**: Coast / Offshore / DeepSea の3段階でマップサイズと危険度を変化させる。
 * **ui**: 描画ラッパ & ウィジェット。
 * **assets/**: JSON データ + RON セーブファイル。
 * **common**: 共有の型とエラー定義。
@@ -170,7 +171,7 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 * 範囲外のタイルは暗灰色で描画し、位置のみ判別可能とする。
 * 深海でランダムに嵐イベントが発生すると、5 ターンの間視界半径を 3 まで低下させる。
 * 陸上では探索中に低確率で休息 (HP+1) または缶詰入手イベントが発生。
-* 水域では低確率でクラゲが出現し、接触するとHPを1失いライン強度も10減少する。
+* 水域では8%の確率でクラゲが出現し、接触するとHPを1失いライン強度も15減少する。
 
 ### 6.4 難易度システム
 
@@ -186,7 +187,7 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 
 | Producer | Consumer  | 関数 / Channel                   | 内容            |
 | -------- | --------- | ------------------------------ | ------------- |
-| mapgen   | game-core | `pub fn generate(seed) -> Map` | 新マップ生成        |
+| mapgen   | game-core | `pub fn generate(seed, w, h) -> Map` | 新マップ生成 (エリア毎にサイズ可変) |
 | ecology  | game-core | `pub fn spawn_fish(map)`       | 魚 Entity 配置 (水タイルからランダム選択) |
 | fishing  | ui        | `pub struct TensionMeter`      | Draw + 更新メソッド |
 | ui       | game-core | `pub struct UIContext`         | ログ追加, リフレッシュ  |
