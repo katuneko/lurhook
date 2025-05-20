@@ -12,3 +12,4 @@ fishing = { path = "../fishing" }
 ui = { path = "../ui" }
 data = { path = "../data" }
 codex = { path = "../codex" }
+audio = { path = "../audio" }

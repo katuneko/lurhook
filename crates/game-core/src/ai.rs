@@ -37,6 +37,7 @@ impl LurhookGame {
                 if self.rng.range(0, 100) < 5 {
                     self.storm_turns = 5;
                     self.ui.add_log("A storm reduces visibility!").ok();
+                    let _ = self.audio.play(Sound::Storm);
                 }
                 if self.rng.range(0, 100) < self.difficulty.hazard_chance(self.area) {
                     self.hazards.push(Hazard {

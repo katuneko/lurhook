@@ -8,15 +8,16 @@ mod ui;
 
 extern crate ui as ui_crate;
 
-use bracket_lib::prelude::*;
 use crate::types::Area;
+use bracket_lib::prelude::*;
 
+use audio::{AudioManager, Sound};
+use codex::Codex;
 use common::{GameError, GameResult, Point};
 use ecology::update_fish;
 use ecology::{spawn_fish_population, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
-use codex::Codex;
 use ui_crate::{init as ui_init, ColorPalette, UIContext, UILayout};
 
 const VIEW_WIDTH: i32 = 60;
@@ -113,6 +114,7 @@ pub struct LurhookGame {
     inventory_cursor: usize,
     inventory_focus: bool,
     codex: codex::Codex,
+    audio: AudioManager,
     area: Area,
     seed: u64,
     fish_types: Vec<data::FishType>,
@@ -184,6 +186,7 @@ impl LurhookGame {
         let mut map = generate(seed, w, h)?;
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         let input = InputConfig::load(CONFIG_PATH)?;
+        let volume = input.volume;
         let palette = if input.colorblind {
             ColorPalette::colorblind()
         } else {
@@ -227,6 +230,7 @@ impl LurhookGame {
             inventory_cursor: 0,
             inventory_focus: false,
             codex: Codex::load(CODEX_PATH)?,
+            audio: AudioManager::new(volume),
             area,
             seed,
             fish_types,
@@ -428,12 +432,14 @@ impl LurhookGame {
                         if self.input.volume < 10 {
                             self.input.volume += 1;
                             let _ = self.input.save(CONFIG_PATH);
+                            self.audio.set_volume(self.input.volume);
                         }
                     }
                     VirtualKeyCode::Minus => {
                         if self.input.volume > 0 {
                             self.input.volume -= 1;
                             let _ = self.input.save(CONFIG_PATH);
+                            self.audio.set_volume(self.input.volume);
                         }
                     }
                     VirtualKeyCode::LBracket => {
@@ -581,6 +587,7 @@ impl LurhookGame {
                 let bite = self.rng.range(0.0, 1.0) < chance;
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
+                    let _ = self.audio.play(Sound::Hit);
                     if let Some(f) = self.fishes.first() {
                         let mut m = TensionMeter::new(
                             f.kind.strength,
@@ -614,6 +621,7 @@ impl LurhookGame {
                             self.player.inventory.push(fish.kind);
                             let _ = self.codex.record_capture(CODEX_PATH, &id);
                             self.ui.add_log("Caught a fish!").ok();
+                            let _ = self.audio.play(Sound::Catch);
                             self.check_area_upgrade();
                         }
                         self.mode = GameMode::Exploring;
@@ -621,6 +629,7 @@ impl LurhookGame {
                     }
                     MeterState::Broken => {
                         self.ui.add_log("Line snapped!").ok();
+                        let _ = self.audio.play(Sound::LineSnap);
                         if self.player.line > 0 {
                             self.player.line = (self.player.line - LINE_DAMAGE).max(0);
                             if self.player.line == 0 {
@@ -790,8 +799,10 @@ impl LurhookGame {
                 self.seed += 1;
                 let (w, h) = self.area.size();
                 self.map = generate(self.seed, w, h).expect("map");
-                self.fishes = spawn_fish_population(&mut self.map, &self.fish_types, 5).expect("fish");
-                self.player.pos = common::Point::new(self.map.width as i32 / 2, self.map.height as i32 / 2);
+                self.fishes =
+                    spawn_fish_population(&mut self.map, &self.fish_types, 5).expect("fish");
+                self.player.pos =
+                    common::Point::new(self.map.width as i32 / 2, self.map.height as i32 / 2);
                 self.ui.add_log("Unlocked offshore area!").ok();
             }
             Area::Offshore if total >= 6 => {
@@ -799,8 +810,10 @@ impl LurhookGame {
                 self.seed += 1;
                 let (w, h) = self.area.size();
                 self.map = generate(self.seed, w, h).expect("map");
-                self.fishes = spawn_fish_population(&mut self.map, &self.fish_types, 5).expect("fish");
-                self.player.pos = common::Point::new(self.map.width as i32 / 2, self.map.height as i32 / 2);
+                self.fishes =
+                    spawn_fish_population(&mut self.map, &self.fish_types, 5).expect("fish");
+                self.player.pos =
+                    common::Point::new(self.map.width as i32 / 2, self.map.height as i32 / 2);
                 self.ui.add_log("Unlocked deep sea!").ok();
             }
             _ => {}
@@ -921,6 +934,7 @@ fn init_subsystems() -> GameResult<()> {
     let map = generate(0, 120, 80)?;
     ui.add_log(&format!("Map {}x{} generated", map.width, map.height))?;
     fishing_init();
+    audio::init();
     let mut meter = TensionMeter::default();
     meter.update(false);
     meter.draw();
