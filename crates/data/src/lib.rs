@@ -24,6 +24,8 @@ pub struct FishType {
     pub min_depth: i32,
     pub max_depth: i32,
     pub fight_style: FightStyle,
+    /// Marks extremely rare boss fish.
+    pub legendary: bool,
 }
 
 /// Loads a list of [`FishType`] from the given JSON file path.
@@ -49,6 +51,7 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
             let mut min_depth = 0;
             let mut max_depth = 0;
             let mut fight_style = FightStyle::Aggressive;
+            let mut legendary = false;
             for line in body.lines() {
                 let line = line.trim().trim_end_matches(',');
                 if line.is_empty() {
@@ -72,6 +75,9 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
                             _ => FightStyle::Aggressive,
                         }
                     }
+                    "legendary" => {
+                        legendary = matches!(val, "true" | "1");
+                    }
                     _ => {}
                 }
             }
@@ -84,6 +90,7 @@ fn parse_fish_json(data: &str) -> GameResult<Vec<FishType>> {
                     min_depth,
                     max_depth,
                     fight_style,
+                    legendary,
                 });
             }
         }
@@ -182,11 +189,12 @@ mod tests {
 
     #[test]
     fn parse_simple_data() {
-        let json = "[\n  {\n    \"id\": \"A\",\n    \"name\": \"A\",\n    \"rarity\": 1.0,\n    \"strength\": 1,\n    \"min_depth\": 0,\n    \"max_depth\": 1,\n    \"fight_style\": \"Aggressive\"\n  }\n]";
+        let json = "[\n  {\n    \"id\": \"A\",\n    \"name\": \"A\",\n    \"rarity\": 1.0,\n    \"strength\": 1,\n    \"min_depth\": 0,\n    \"max_depth\": 1,\n    \"fight_style\": \"Aggressive\",\n    \"legendary\": true\n  }\n]";
         let fishes = parse_fish_json(json).expect("fishes");
         assert_eq!(fishes.len(), 1);
         assert_eq!(fishes[0].id, "A");
         assert_eq!(fishes[0].fight_style, FightStyle::Aggressive);
+        assert!(fishes[0].legendary);
     }
 
     #[test]

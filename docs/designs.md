@@ -93,7 +93,8 @@
     "strength": 12,     // テンション増加係数
     "min_depth": 10,
     "max_depth": 30,
-    "fight_style": "Aggressive" // ファイトパターン
+    "fight_style": "Aggressive", // ファイトパターン
+    "legendary": false
   }
 ]
 ```
