@@ -29,17 +29,20 @@ pub struct TensionMeter {
     pub strength: i32,
     /// Behavior of the hooked fish.
     pub style: FightStyle,
+    /// Effectiveness multiplier when reeling.
+    pub reel_factor: f32,
 }
 
 impl TensionMeter {
     /// Creates a new [`TensionMeter`] with the given fish strength.
-    pub fn new(strength: i32, style: FightStyle) -> Self {
+    pub fn new(strength: i32, style: FightStyle, reel_factor: f32) -> Self {
         Self {
             tension: 0,
             max_tension: 100,
             duration: 5,
             strength,
             style,
+            reel_factor,
         }
     }
 
@@ -51,7 +54,8 @@ impl TensionMeter {
     pub fn update(&mut self, reel: bool) -> MeterState {
         let before = self.tension;
         if reel {
-            self.tension = (self.tension - 10).max(0);
+            let reduction = (10.0 * self.reel_factor).round() as i32;
+            self.tension = (self.tension - reduction).max(0);
         } else {
             match self.style {
                 FightStyle::Aggressive => {
@@ -107,7 +111,7 @@ pub fn bite_probability(tile: TileKind, bait_bonus: f32) -> f32 {
 
 impl Default for TensionMeter {
     fn default() -> Self {
-        Self::new(5, FightStyle::Aggressive)
+        Self::new(5, FightStyle::Aggressive, 1.0)
     }
 }
 
@@ -128,7 +132,7 @@ mod tests {
 
     #[test]
     fn reel_reduces_tension() {
-        let mut meter = TensionMeter::new(10, FightStyle::Aggressive);
+        let mut meter = TensionMeter::new(10, FightStyle::Aggressive, 1.0);
         meter.update(false); // tension 20
         meter.update(true); // reel -> 10
         assert!(meter.tension < 20);
@@ -138,7 +142,7 @@ mod tests {
     fn breaks_when_exceeding_max() {
         let mut meter = TensionMeter {
             max_tension: 5,
-            ..TensionMeter::new(10, FightStyle::Aggressive)
+            ..TensionMeter::new(10, FightStyle::Aggressive, 1.0)
         };
         assert_eq!(meter.update(false), MeterState::Broken);
     }
@@ -147,14 +151,14 @@ mod tests {
     fn succeeds_after_duration() {
         let mut meter = TensionMeter {
             duration: 1,
-            ..TensionMeter::new(1, FightStyle::Aggressive)
+            ..TensionMeter::new(1, FightStyle::Aggressive, 1.0)
         };
         assert_eq!(meter.update(false), MeterState::Success);
     }
 
     #[test]
     fn repeated_reel_zeroes_tension() {
-        let mut meter = TensionMeter::new(5, FightStyle::Aggressive);
+        let mut meter = TensionMeter::new(5, FightStyle::Aggressive, 1.0);
         meter.tension = 20;
         for _ in 0..3 {
             meter.update(true);
@@ -164,7 +168,7 @@ mod tests {
 
     #[test]
     fn lost_when_tension_drops_to_zero() {
-        let mut meter = TensionMeter::new(5, FightStyle::Aggressive);
+        let mut meter = TensionMeter::new(5, FightStyle::Aggressive, 1.0);
         meter.tension = 10;
         let state = meter.update(true);
         assert_eq!(state, MeterState::Lost);
@@ -195,14 +199,14 @@ mod tests {
 
     #[test]
     fn aggressive_style_spikes_tension() {
-        let mut meter = TensionMeter::new(2, FightStyle::Aggressive);
+        let mut meter = TensionMeter::new(2, FightStyle::Aggressive, 1.0);
         meter.update(false);
         assert_eq!(meter.tension, 4);
     }
 
     #[test]
     fn endurance_style_slow_end() {
-        let mut meter = TensionMeter::new(4, FightStyle::Endurance);
+        let mut meter = TensionMeter::new(4, FightStyle::Endurance, 1.0);
         meter.update(false); // duration 5 -> add 4
         for _ in 0..3 {
             meter.update(false);
@@ -213,9 +217,17 @@ mod tests {
 
     #[test]
     fn evasive_style_can_escape() {
-        let mut meter = TensionMeter::new(3, FightStyle::Evasive);
+        let mut meter = TensionMeter::new(3, FightStyle::Evasive, 1.0);
         meter.tension = 5;
         let state = meter.update(false);
         assert_eq!(state, MeterState::Lost);
+    }
+
+    #[test]
+    fn reel_factor_increases_reduction() {
+        let mut meter = TensionMeter::new(5, FightStyle::Aggressive, 2.0);
+        meter.tension = 20;
+        meter.update(true);
+        assert!(meter.tension < 10); // reduction > default 10
     }
 }

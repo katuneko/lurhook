@@ -2,19 +2,33 @@
   {
     "id": "BASIC_ROD",
     "name": "Basic Rod",
+    "kind": "Rod",
     "tension_bonus": 0,
+    "reel_factor": 1.0,
+    "bite_bonus": 0.0
+  },
+  {
+    "id": "BASIC_REEL",
+    "name": "Basic Reel",
+    "kind": "Reel",
+    "tension_bonus": 0,
+    "reel_factor": 1.0,
     "bite_bonus": 0.0
   },
   {
     "id": "LURE_PLUS",
     "name": "Lure Plus",
-    "tension_bonus": 20,
+    "kind": "Lure",
+    "tension_bonus": 0,
+    "reel_factor": 1.0,
     "bite_bonus": 0.2
   },
   {
     "id": "CANNED_MEAL",
     "name": "Canned Meal",
+    "kind": "Food",
     "tension_bonus": 0,
+    "reel_factor": 1.0,
     "bite_bonus": 0.0
   }
 ]

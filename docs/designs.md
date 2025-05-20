@@ -114,6 +114,25 @@
 )
 ```
 
+### 5.3 アイテムデータ `assets/items.json`
+
+```jsonc
+[
+  {
+    "id": "BASIC_ROD",
+    "name": "Basic Rod",
+    "kind": "Rod",
+    "tension_bonus": 0,
+    "reel_factor": 1.0,
+    "bite_bonus": 0.0
+  }
+]
+```
+* `kind` は `Rod` / `Reel` / `Lure` / `Food` のいずれか。
+* `tension_bonus` は最大テンションへの加算値。
+* `reel_factor` はリールの効果係数。1.0 で等倍、2.0 で2倍引き寄せ。
+* `bite_bonus` はバイト確率への加算値。
+
 ## 6. 主要ロジックシーケンス
 
 ### 6.1 ターン処理フロー

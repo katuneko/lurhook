@@ -107,7 +107,8 @@
 ## 9. データ要件
 
 * `assets/fish.json`: 魚種リスト (id, name, rarity, strength, min\_depth, max\_depth, fight_style, legendary)。
-* `assets/items.json`: 釣り竿・ルアー・餌。
+* `assets/items.json`: 竿・リール・ルアー・食料の各種パラメータ
+  *(kind, tension_bonus, reel_factor, bite_bonus)*。
 
 ## 10. セキュリティ要件
 

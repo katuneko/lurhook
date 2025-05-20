@@ -1,9 +1,9 @@
 //! Game engine entry point.
 
+mod ai;
 mod app;
 mod input;
 mod types;
-mod ai;
 mod ui;
 
 extern crate ui as ui_crate;
@@ -94,12 +94,16 @@ impl LurhookGame {
                 data::load_item_types(item_path)?
             }
         };
-        let equipped = items.first().cloned().unwrap_or(data::ItemType {
-            id: String::new(),
-            name: String::new(),
-            tension_bonus: 0,
-            bite_bonus: 0.0,
-        });
+        let rod = items.iter().find(|i| matches!(i.kind, data::ItemKind::Rod));
+        let reel = items
+            .iter()
+            .find(|i| matches!(i.kind, data::ItemKind::Reel));
+        let lure = items
+            .iter()
+            .find(|i| matches!(i.kind, data::ItemKind::Lure));
+        let bait_bonus = lure.map(|l| l.bite_bonus).unwrap_or(0.0);
+        let tension_bonus = rod.map(|r| r.tension_bonus).unwrap_or(0);
+        let reel_factor = reel.map(|r| r.reel_factor).unwrap_or(1.0);
         let mut map = generate(seed)?;
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         let input = InputConfig::load(CONFIG_PATH)?;
@@ -116,8 +120,9 @@ impl LurhookGame {
                 hp: MAX_HP,
                 hunger: MAX_HUNGER,
                 line: 100,
-                bait_bonus: equipped.bite_bonus,
-                tension_bonus: equipped.tension_bonus,
+                bait_bonus,
+                tension_bonus,
+                reel_factor,
                 canned_food: 0,
                 inventory: Vec::new(),
             },
@@ -377,7 +382,11 @@ impl LurhookGame {
                 if bite {
                     self.ui.add_log("Hooked a fish!").ok();
                     if let Some(f) = self.fishes.first() {
-                        let mut m = TensionMeter::new(f.kind.strength, f.kind.fight_style);
+                        let mut m = TensionMeter::new(
+                            f.kind.strength,
+                            f.kind.fight_style,
+                            self.player.reel_factor,
+                        );
                         m.max_tension += self.player.tension_bonus;
                         self.meter = Some(m);
                     } else {
@@ -428,7 +437,6 @@ impl LurhookGame {
         }
     }
 
-
     fn eat_fish(&mut self) {
         if let Some(_fish) = self.player.inventory.pop() {
             self.player.hunger = (self.player.hunger + EAT_RAW_FISH).min(MAX_HUNGER);
@@ -462,7 +470,6 @@ impl LurhookGame {
             self.ui.add_log("No canned food available.").ok();
         }
     }
-
 
     /// Saves a minimal game state to a RON-like file at `path`.
     pub fn save_game(&self, path: &str) -> GameResult<()> {
@@ -654,8 +661,9 @@ mod tests {
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.player.hp, MAX_HP);
         assert_eq!(game.player.line, 100);
-        assert_eq!(game.player.bait_bonus, 0.0);
+        assert!((game.player.bait_bonus - 0.2).abs() < f32::EPSILON);
         assert_eq!(game.player.tension_bonus, 0);
+        assert!((game.player.reel_factor - 1.0).abs() < f32::EPSILON);
         assert_eq!(game.map.width, 120);
         assert_eq!(game.map.height, 80);
         assert_eq!(game.fishes.len(), 5);
@@ -945,6 +953,27 @@ mod tests {
         game.update_fishing();
         if let Some(m) = &game.meter {
             assert_eq!(m.max_tension, 150);
+        } else {
+            panic!("meter not created");
+        }
+    }
+
+    #[test]
+    fn reel_factor_affects_reeling() {
+        let mut game = LurhookGame::default();
+        game.player.reel_factor = 2.0;
+        game.player.bait_bonus = 1.0;
+        game.cast();
+        game.confirm_cast();
+        if let GameMode::Fishing { ref mut wait } = game.mode {
+            *wait = 0;
+        }
+        game.update_fishing();
+        if let Some(mut m) = game.meter.take() {
+            m.tension = 30;
+            let before = m.tension;
+            m.update(true);
+            assert!(m.tension <= before - 20); // factor 2.0 reduces by >=20
         } else {
             panic!("meter not created");
         }

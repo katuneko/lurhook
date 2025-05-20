@@ -105,12 +105,23 @@ pub fn init() {
     println!("Initialized crate: data");
 }
 
+/// Kind of gear item.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ItemKind {
+    Rod,
+    Reel,
+    Lure,
+    Food,
+}
+
 /// Gear item parameters loaded from JSON.
 #[derive(Clone, Debug)]
 pub struct ItemType {
     pub id: String,
     pub name: String,
+    pub kind: ItemKind,
     pub tension_bonus: i32,
+    pub reel_factor: f32,
     pub bite_bonus: f32,
 }
 
@@ -131,7 +142,9 @@ fn parse_item_json(data: &str) -> GameResult<Vec<ItemType>> {
         if let Some(body) = obj.split('}').next() {
             let mut id = String::new();
             let mut name = String::new();
+            let mut kind = ItemKind::Rod;
             let mut tension_bonus = 0;
+            let mut reel_factor = 1.0;
             let mut bite_bonus = 0.0;
             for line in body.lines() {
                 let line = line.trim().trim_end_matches(',');
@@ -144,7 +157,17 @@ fn parse_item_json(data: &str) -> GameResult<Vec<ItemType>> {
                 match key {
                     "id" => id = val.to_string(),
                     "name" => name = val.to_string(),
+                    "kind" => {
+                        kind = match val {
+                            "Rod" => ItemKind::Rod,
+                            "Reel" => ItemKind::Reel,
+                            "Lure" => ItemKind::Lure,
+                            "Food" => ItemKind::Food,
+                            _ => ItemKind::Rod,
+                        }
+                    }
                     "tension_bonus" => tension_bonus = val.parse().unwrap_or(0),
+                    "reel_factor" => reel_factor = val.parse().unwrap_or(1.0),
                     "bite_bonus" => bite_bonus = val.parse().unwrap_or(0.0),
                     _ => {}
                 }
@@ -153,7 +176,9 @@ fn parse_item_json(data: &str) -> GameResult<Vec<ItemType>> {
                 items.push(ItemType {
                     id,
                     name,
+                    kind,
                     tension_bonus,
+                    reel_factor,
                     bite_bonus,
                 });
             }
@@ -218,10 +243,12 @@ mod tests {
 
     #[test]
     fn parse_item_simple() {
-        let json = "[\n  {\n    \"id\": \"I\",\n    \"name\": \"Item\",\n    \"tension_bonus\": 5,\n    \"bite_bonus\": 0.1\n  }\n]";
+        let json = "[\n  {\n    \"id\": \"I\",\n    \"name\": \"Item\",\n    \"kind\": \"Reel\",\n    \"tension_bonus\": 5,\n    \"reel_factor\": 1.5,\n    \"bite_bonus\": 0.1\n  }\n]";
         let items = parse_item_json(json).expect("items");
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].tension_bonus, 5);
         assert!((items[0].bite_bonus - 0.1).abs() < f32::EPSILON);
+        assert_eq!(items[0].kind, ItemKind::Reel);
+        assert!((items[0].reel_factor - 1.5).abs() < f32::EPSILON);
     }
 }
