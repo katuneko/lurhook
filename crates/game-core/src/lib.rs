@@ -95,16 +95,38 @@ impl LurhookGame {
                 data::load_item_types(item_path)?
             }
         };
-        let rod_pos = items.iter().position(|i| matches!(i.kind, data::ItemKind::Rod));
-        let reel_pos = items.iter().position(|i| matches!(i.kind, data::ItemKind::Reel));
-        let lure_pos = items.iter().position(|i| matches!(i.kind, data::ItemKind::Lure));
+        let rod_pos = items
+            .iter()
+            .position(|i| matches!(i.kind, data::ItemKind::Rod));
+        let reel_pos = items
+            .iter()
+            .position(|i| matches!(i.kind, data::ItemKind::Reel));
+        let lure_pos = items
+            .iter()
+            .position(|i| matches!(i.kind, data::ItemKind::Lure));
         let rod = rod_pos.map(|p| items.remove(p));
         // adjust indices if necessary
-        let reel = reel_pos.map(|p| items.remove(p - if rod_pos.map_or(false, |r| p > r) { 1 } else { 0 }));
+        let reel = reel_pos.map(|p| {
+            items.remove(
+                p - if rod_pos.map_or(false, |r| p > r) {
+                    1
+                } else {
+                    0
+                },
+            )
+        });
         let lure = lure_pos.map(|p| {
             let mut idx = p;
-            if let Some(r) = rod_pos { if p > r { idx -= 1; } }
-            if let Some(r) = reel_pos { if p > r { idx -= 1; } }
+            if let Some(r) = rod_pos {
+                if p > r {
+                    idx -= 1;
+                }
+            }
+            if let Some(r) = reel_pos {
+                if p > r {
+                    idx -= 1;
+                }
+            }
             items.remove(idx)
         });
         let bait_bonus = lure.as_ref().map(|l| l.bite_bonus).unwrap_or(0.0);
@@ -239,6 +261,15 @@ impl LurhookGame {
         self.mode = GameMode::End { score };
     }
 
+    fn toggle_colorblind(&mut self) {
+        self.input.colorblind = !self.input.colorblind;
+        self.palette = if self.input.colorblind {
+            ColorPalette::colorblind()
+        } else {
+            ColorPalette::default()
+        };
+    }
+
     /// Handles input and updates the player position accordingly.
     fn handle_input(&mut self, ctx: &mut BTerm) {
         self.reeling = false;
@@ -284,6 +315,21 @@ impl LurhookGame {
                     UILayout::Help
                 };
                 self.ui.set_layout(next);
+                return;
+            }
+            if key == self.input.options {
+                let next = if self.ui.layout() == UILayout::Options {
+                    UILayout::Standard
+                } else {
+                    UILayout::Options
+                };
+                self.ui.set_layout(next);
+                return;
+            }
+            if self.ui.layout() == UILayout::Options {
+                if key == VirtualKeyCode::C {
+                    self.toggle_colorblind();
+                }
                 return;
             }
             if key == self.input.save {
@@ -661,6 +707,10 @@ impl GameState for LurhookGame {
             self.ui.draw_help(ctx).ok();
             return;
         }
+        if self.ui.layout() == UILayout::Options {
+            self.ui.draw_options(ctx, self.input.colorblind).ok();
+            return;
+        }
         self.draw_map(ctx);
         self.draw_fish(ctx);
         self.draw_hazards(ctx);
@@ -687,7 +737,9 @@ impl GameState for LurhookGame {
             )
             .ok();
         let lines = self.inventory_lines();
-        self.ui.draw_inventory(ctx, &lines, self.inventory_cursor).ok();
+        self.ui
+            .draw_inventory(ctx, &lines, self.inventory_cursor)
+            .ok();
     }
 }
 
@@ -1236,5 +1288,21 @@ mod tests {
         game.ui.set_layout(UILayout::Inventory);
         game.activate_selected_item();
         assert_eq!(game.player.tension_bonus, 5);
+    }
+
+    #[test]
+    fn options_toggle_changes_palette() {
+        let mut game = LurhookGame::default();
+        let orig = game.palette.fish;
+        game.toggle_colorblind();
+        assert_ne!(orig, game.palette.fish);
+    }
+
+    #[test]
+    fn options_key_opens_menu() {
+        let mut game = LurhookGame::default();
+        let mut ctx = dummy_ctx(game.input.options);
+        game.handle_input(&mut ctx);
+        assert_eq!(game.ui.layout(), UILayout::Options);
     }
 }

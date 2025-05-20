@@ -12,6 +12,8 @@ pub enum UILayout {
     Inventory,
     /// Layout showing help and controls.
     Help,
+    /// Layout showing game options.
+    Options,
 }
 
 /// Color palette for map and entity rendering.
@@ -184,7 +186,12 @@ impl UIContext {
     }
 
     /// Draws the player's inventory when in `Inventory` layout.
-    pub fn draw_inventory(&self, ctx: &mut BTerm, lines: &[String], cursor: usize) -> GameResult<()> {
+    pub fn draw_inventory(
+        &self,
+        ctx: &mut BTerm,
+        lines: &[String],
+        cursor: usize,
+    ) -> GameResult<()> {
         if self.layout != UILayout::Inventory {
             return Ok(());
         }
@@ -202,6 +209,17 @@ impl UIContext {
             return Ok(());
         }
         for (i, line) in help_strings().iter().enumerate() {
+            ctx.print_centered(5 + i as i32, line);
+        }
+        Ok(())
+    }
+
+    /// Draws options text when in `Options` layout.
+    pub fn draw_options(&self, ctx: &mut BTerm, colorblind: bool) -> GameResult<()> {
+        if self.layout != UILayout::Options {
+            return Ok(());
+        }
+        for (i, line) in options_strings(colorblind).iter().enumerate() {
             ctx.print_centered(5 + i as i32, line);
         }
         Ok(())
@@ -239,6 +257,17 @@ fn help_strings() -> Vec<String> {
         "i: Inventory".to_string(),
         "F1: Toggle this help".to_string(),
         "Esc/Q: Quit".to_string(),
+    ]
+}
+
+fn options_strings(colorblind: bool) -> Vec<String> {
+    vec![
+        "Options:".to_string(),
+        format!(
+            "C: Colorblind Mode [{}]",
+            if colorblind { "On" } else { "Off" }
+        ),
+        "O: Back".to_string(),
     ]
 }
 
@@ -288,6 +317,8 @@ mod tests {
         assert_eq!(ui.layout(), UILayout::Inventory);
         ui.set_layout(UILayout::Help);
         assert_eq!(ui.layout(), UILayout::Help);
+        ui.set_layout(UILayout::Options);
+        assert_eq!(ui.layout(), UILayout::Options);
     }
 
     #[test]
@@ -335,5 +366,13 @@ mod tests {
         let lines = help_strings();
         assert_eq!(lines.first().unwrap(), "Controls:");
         assert!(lines.iter().any(|l| l.contains("F1")));
+    }
+
+    #[test]
+    fn options_strings_show_status() {
+        let lines_on = options_strings(true);
+        assert!(lines_on.iter().any(|l| l.contains("On")));
+        let lines_off = options_strings(false);
+        assert!(lines_off.iter().any(|l| l.contains("Off")));
     }
 }
