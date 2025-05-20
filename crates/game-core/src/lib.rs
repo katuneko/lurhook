@@ -9,6 +9,7 @@ mod ui;
 extern crate ui as ui_crate;
 
 use bracket_lib::prelude::*;
+use crate::types::Area;
 
 use common::{GameError, GameResult, Point};
 use ecology::update_fish;
@@ -77,12 +78,13 @@ impl Difficulty {
         }
     }
 
-    fn hazard_chance(self) -> i32 {
-        match self {
+    fn hazard_chance(self, area: Area) -> i32 {
+        let base = match self {
             Difficulty::Easy => HAZARD_CHANCE / 2,
             Difficulty::Normal => HAZARD_CHANCE,
             Difficulty::Hard => HAZARD_CHANCE * 2,
-        }
+        };
+        base * area.hazard_multiplier()
     }
 }
 
@@ -110,11 +112,14 @@ pub struct LurhookGame {
     cast_step: usize,
     inventory_cursor: usize,
     codex: codex::Codex,
+    area: Area,
+    seed: u64,
+    fish_types: Vec<data::FishType>,
 }
 
 impl LurhookGame {
-    /// Creates a new game with a generated map.
-    pub fn new_with_difficulty(seed: u64, difficulty: Difficulty) -> GameResult<Self> {
+    /// Creates a new game with a generated map in the given area.
+    pub fn new_with_area(seed: u64, difficulty: Difficulty, area: Area) -> GameResult<Self> {
         let fish_types = {
             #[cfg(target_arch = "wasm32")]
             {
@@ -174,7 +179,8 @@ impl LurhookGame {
         let bait_bonus = lure.as_ref().map(|l| l.bite_bonus).unwrap_or(0.0);
         let tension_bonus = rod.as_ref().map(|r| r.tension_bonus).unwrap_or(0);
         let reel_factor = reel.as_ref().map(|r| r.reel_factor).unwrap_or(1.0);
-        let mut map = generate(seed)?;
+        let (w, h) = area.size();
+        let mut map = generate(seed, w, h)?;
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         let input = InputConfig::load(CONFIG_PATH)?;
         let palette = if input.colorblind {
@@ -219,9 +225,17 @@ impl LurhookGame {
             cast_step: 0,
             inventory_cursor: 0,
             codex: Codex::load(CODEX_PATH)?,
+            area,
+            seed,
+            fish_types,
         };
         game.ui.set_layout(UILayout::Help);
         Ok(game)
+    }
+
+    /// Creates a new game with a specified difficulty in the default coastal area.
+    pub fn new_with_difficulty(seed: u64, difficulty: Difficulty) -> GameResult<Self> {
+        Self::new_with_area(seed, difficulty, Area::Coast)
     }
 
     /// Creates a new game with default (Normal) difficulty.
@@ -601,6 +615,7 @@ impl LurhookGame {
                             self.player.inventory.push(fish.kind);
                             let _ = self.codex.record_capture(CODEX_PATH, &id);
                             self.ui.add_log("Caught a fish!").ok();
+                            self.check_area_upgrade();
                         }
                         self.mode = GameMode::Exploring;
                         self.ui.set_layout(UILayout::Standard);
@@ -767,6 +782,31 @@ impl LurhookGame {
         };
         Ok(game)
     }
+
+    fn check_area_upgrade(&mut self) {
+        let total = self.codex.total_captures();
+        match self.area {
+            Area::Coast if total >= 3 => {
+                self.area = Area::Offshore;
+                self.seed += 1;
+                let (w, h) = self.area.size();
+                self.map = generate(self.seed, w, h).expect("map");
+                self.fishes = spawn_fish_population(&mut self.map, &self.fish_types, 5).expect("fish");
+                self.player.pos = common::Point::new(self.map.width as i32 / 2, self.map.height as i32 / 2);
+                self.ui.add_log("Unlocked offshore area!").ok();
+            }
+            Area::Offshore if total >= 6 => {
+                self.area = Area::DeepSea;
+                self.seed += 1;
+                let (w, h) = self.area.size();
+                self.map = generate(self.seed, w, h).expect("map");
+                self.fishes = spawn_fish_population(&mut self.map, &self.fish_types, 5).expect("fish");
+                self.player.pos = common::Point::new(self.map.width as i32 / 2, self.map.height as i32 / 2);
+                self.ui.add_log("Unlocked deep sea!").ok();
+            }
+            _ => {}
+        }
+    }
 }
 
 impl Default for LurhookGame {
@@ -879,7 +919,7 @@ fn init_subsystems() -> GameResult<()> {
     ui_init();
     ui.add_log("UI initialized")?;
 
-    let map = generate(0)?;
+    let map = generate(0, 120, 80)?;
     ui.add_log(&format!("Map {}x{} generated", map.width, map.height))?;
     fishing_init();
     let mut meter = TensionMeter::default();
@@ -913,8 +953,8 @@ mod tests {
         assert!((game.player.bait_bonus - 0.2).abs() < f32::EPSILON);
         assert_eq!(game.player.tension_bonus, 0);
         assert!((game.player.reel_factor - 1.0).abs() < f32::EPSILON);
-        assert_eq!(game.map.width, 120);
-        assert_eq!(game.map.height, 80);
+        assert_eq!(game.map.width, 80);
+        assert_eq!(game.map.height, 50);
         assert_eq!(game.fishes.len(), 5);
         let fish = &game.fishes[0];
         let tile = game.map.tiles[game.map.idx(fish.position)];
@@ -1523,7 +1563,31 @@ mod tests {
 
     #[test]
     fn hazard_chance_scales() {
-        assert!(Difficulty::Hard.hazard_chance() > Difficulty::Normal.hazard_chance());
-        assert!(Difficulty::Easy.hazard_chance() < Difficulty::Normal.hazard_chance());
+        assert!(
+            Difficulty::Hard.hazard_chance(Area::Coast)
+                > Difficulty::Normal.hazard_chance(Area::Coast)
+        );
+        assert!(
+            Difficulty::Easy.hazard_chance(Area::Coast)
+                < Difficulty::Normal.hazard_chance(Area::Coast)
+        );
+    }
+
+    #[test]
+    fn new_with_area_sets_map_size() {
+        let game = LurhookGame::new_with_area(0, Difficulty::Normal, Area::DeepSea).unwrap();
+        assert!(game.map.width > 120 && game.map.height > 80);
+    }
+
+    #[test]
+    fn area_upgrades_after_catches() {
+        let mut game = LurhookGame::default();
+        let path = "/tmp/test_codex.json";
+        for _ in 0..3 {
+            game.codex.record_capture(path, "A").unwrap();
+        }
+        game.check_area_upgrade();
+        std::fs::remove_file(path).unwrap();
+        assert_eq!(game.area, Area::Offshore);
     }
 }

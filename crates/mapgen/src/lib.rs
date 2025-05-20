@@ -45,9 +45,7 @@ impl Map {
 }
 
 /// Generates a map using Perlin noise.
-pub fn generate(seed: u64) -> GameResult<Map> {
-    let width = 120;
-    let height = 80;
+pub fn generate(seed: u64, width: u32, height: u32) -> GameResult<Map> {
     let mut map = Map::new(width, height);
     let mut noise = FastNoise::seeded(seed);
     noise.set_noise_type(NoiseType::Perlin);
@@ -84,7 +82,7 @@ mod tests {
 
     #[test]
     fn generate_map() {
-        let map = generate(0).expect("map");
+        let map = generate(0, 120, 80).expect("map");
         assert_eq!(map.width, 120);
         assert_eq!(map.height, 80);
         assert_eq!(map.tiles.len(), 120 * 80);
@@ -93,7 +91,7 @@ mod tests {
 
     #[test]
     fn snapshot_seed_0() {
-        let map = generate(0).expect("map");
+        let map = generate(0, 120, 80).expect("map");
         let expected = include_str!("snapshot_seed0.txt").replace('\r', "");
         assert_eq!(format!("{:?}\n", map), expected);
     }
@@ -114,7 +112,7 @@ mod tests {
 
     #[test]
     fn generated_map_has_water() {
-        let map = generate(1).expect("map");
+        let map = generate(1, 120, 80).expect("map");
         assert!(map.tiles.iter().any(|&t| t != TileKind::Land));
     }
 }
