@@ -3,6 +3,10 @@
 mod app;
 mod input;
 mod types;
+mod ai;
+mod ui;
+
+extern crate ui as ui_crate;
 
 use bracket_lib::prelude::*;
 
@@ -11,7 +15,7 @@ use ecology::update_fish;
 use ecology::{spawn_fish_population, Fish};
 use fishing::{init as fishing_init, TensionMeter};
 use mapgen::{generate, Map, TileKind};
-use ui::{init as ui_init, UIContext, UILayout};
+use ui_crate::{init as ui_init, ColorPalette, UIContext, UILayout};
 
 const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
@@ -58,7 +62,7 @@ pub struct LurhookGame {
     mode: GameMode,
     meter: Option<TensionMeter>,
     reeling: bool,
-    palette: ui::ColorPalette,
+    palette: ColorPalette,
     storm_turns: u8,
     hazards: Vec<Hazard>,
     cast_path: Option<Vec<common::Point>>,
@@ -100,9 +104,9 @@ impl LurhookGame {
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         let input = InputConfig::load(CONFIG_PATH)?;
         let palette = if input.colorblind {
-            ui::ColorPalette::colorblind()
+            ColorPalette::colorblind()
         } else {
-            ui::ColorPalette::default()
+            ColorPalette::default()
         };
         let start = common::Point::new(map.width as i32 / 2, map.height as i32 / 2);
         let depth = map.depth(start);
@@ -134,7 +138,7 @@ impl LurhookGame {
             cast_path: None,
             cast_step: 0,
         };
-        game.ui.set_layout(ui::UILayout::Help);
+        game.ui.set_layout(UILayout::Help);
         Ok(game)
     }
 
@@ -183,89 +187,6 @@ impl LurhookGame {
         path
     }
 
-    fn advance_time(&mut self) {
-        if self.storm_turns > 0 {
-            self.storm_turns -= 1;
-        }
-        self.turn += 1;
-        let idx = (self.turn / TIME_SEGMENT_TURNS) % TIMES.len() as u32;
-        self.time_of_day = TIMES[idx as usize];
-        if self.player.hunger > 0 {
-            self.player.hunger -= 1;
-            if self.player.hunger == 0 {
-                self.ui.add_log("You are starving!").ok();
-            }
-        } else if self.player.hp > 0 {
-            self.player.hp -= 1;
-        }
-        let idx = self.map.idx(self.player.pos);
-        let tile = self.map.tiles[idx];
-        match tile {
-            TileKind::Land => {
-                if self.rng.range(0, 100) < 10 {
-                    if self.rng.range(0, 2) == 0 && self.player.hp < MAX_HP {
-                        self.player.hp += 1;
-                        self.ui.add_log("You rest on the shore.").ok();
-                    } else {
-                        self.player.canned_food += 1;
-                        self.ui.add_log("You found canned food!").ok();
-                    }
-                }
-            }
-            TileKind::DeepWater => {
-                if self.rng.range(0, 100) < 5 {
-                    self.storm_turns = 5;
-                    self.ui.add_log("A storm reduces visibility!").ok();
-                }
-                if self.rng.range(0, 100) < HAZARD_CHANCE {
-                    self.hazards.push(Hazard {
-                        pos: self.player.pos,
-                        turns: HAZARD_DURATION,
-                    });
-                    self.ui.add_log("A jellyfish appears!").ok();
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn current_drift(&self) -> common::Point {
-        if (self.turn / TIDE_TURNS) % 2 == 0 {
-            common::Point::new(1, 0)
-        } else {
-            common::Point::new(-1, 0)
-        }
-    }
-
-    fn visibility_radius(&self) -> i32 {
-        let idx = self.map.idx(self.player.pos);
-        match self.map.tiles[idx] {
-            TileKind::DeepWater => {
-                let base = 5;
-                if self.storm_turns > 0 {
-                    base.min(3)
-                } else {
-                    base
-                }
-            }
-            _ => i32::MAX,
-        }
-    }
-
-    fn is_visible(&self, pt: common::Point) -> bool {
-        let r = self.visibility_radius();
-        (pt.x - self.player.pos.x).abs() <= r && (pt.y - self.player.pos.y).abs() <= r
-    }
-
-    fn tile_style(&self, tile: TileKind, visible: bool) -> (char, RGB) {
-        let (glyph, color) = match tile {
-            TileKind::Land => ('.', self.palette.land),
-            TileKind::ShallowWater => ('~', self.palette.shallow),
-            TileKind::DeepWater => ('≈', self.palette.deep),
-        };
-        let color = if visible { color } else { color * 0.4 }; // darken when hidden
-        (glyph, color)
-    }
     /// Moves the player by the given delta, clamped to screen bounds.
     fn try_move(&mut self, delta: common::Point) {
         let mut x = self.player.pos.x + delta.x;
@@ -507,25 +428,6 @@ impl LurhookGame {
         }
     }
 
-    fn update_hazards(&mut self) {
-        for hazard in self.hazards.iter_mut() {
-            if hazard.turns > 0 {
-                hazard.turns -= 1;
-            }
-        }
-        for hazard in &self.hazards {
-            if hazard.pos == self.player.pos {
-                if self.player.hp > 0 {
-                    self.player.hp -= HAZARD_DAMAGE;
-                    self.ui.add_log("A jellyfish stings you!").ok();
-                }
-                if self.player.line > 0 {
-                    self.player.line = (self.player.line - LINE_DAMAGE).max(0);
-                }
-            }
-        }
-        self.hazards.retain(|h| h.turns > 0);
-    }
 
     fn eat_fish(&mut self) {
         if let Some(_fish) = self.player.inventory.pop() {
@@ -561,99 +463,6 @@ impl LurhookGame {
         }
     }
 
-    /// Draws the map to the screen.
-    fn draw_map(&self, ctx: &mut BTerm) {
-        let (cam_x, cam_y) = self.camera();
-        for y in 0..VIEW_HEIGHT {
-            for x in 0..VIEW_WIDTH {
-                let mx = cam_x + x;
-                let my = cam_y + y;
-                let pt = common::Point::new(mx, my);
-                let idx = self.map.idx(pt);
-                let tile = self.map.tiles[idx];
-                let visible = self.is_visible(pt);
-                let (glyph, color) = self.tile_style(tile, visible);
-                ctx.set(x, y, color, RGB::named(BLACK), to_cp437(glyph));
-            }
-        }
-        if let GameMode::Aiming { target } = self.mode {
-            if target.x >= cam_x
-                && target.x < cam_x + VIEW_WIDTH
-                && target.y >= cam_y
-                && target.y < cam_y + VIEW_HEIGHT
-            {
-                ctx.set(
-                    target.x - cam_x,
-                    target.y - cam_y,
-                    RGB::named(WHITE),
-                    RGB::named(BLACK),
-                    to_cp437('*'),
-                );
-            }
-        }
-        if let Some(path) = &self.cast_path {
-            for (i, pt) in path.iter().enumerate() {
-                if i >= self.cast_step {
-                    break;
-                }
-                if pt.x >= cam_x
-                    && pt.x < cam_x + VIEW_WIDTH
-                    && pt.y >= cam_y
-                    && pt.y < cam_y + VIEW_HEIGHT
-                {
-                    let glyph = if i == path.len() - 1 { 'o' } else { '*' };
-                    ctx.set(
-                        pt.x - cam_x,
-                        pt.y - cam_y,
-                        RGB::named(WHITE),
-                        RGB::named(BLACK),
-                        to_cp437(glyph),
-                    );
-                }
-            }
-        }
-    }
-
-    /// Draws all fish on the map.
-    fn draw_fish(&self, ctx: &mut BTerm) {
-        let (cam_x, cam_y) = self.camera();
-        for fish in &self.fishes {
-            if fish.position.x >= cam_x
-                && fish.position.x < cam_x + VIEW_WIDTH
-                && fish.position.y >= cam_y
-                && fish.position.y < cam_y + VIEW_HEIGHT
-                && self.is_visible(fish.position)
-            {
-                ctx.set(
-                    fish.position.x - cam_x,
-                    fish.position.y - cam_y,
-                    self.palette.fish,
-                    RGB::named(BLACK),
-                    to_cp437('f'),
-                );
-            }
-        }
-    }
-
-    fn draw_hazards(&self, ctx: &mut BTerm) {
-        let (cam_x, cam_y) = self.camera();
-        for h in &self.hazards {
-            if h.pos.x >= cam_x
-                && h.pos.x < cam_x + VIEW_WIDTH
-                && h.pos.y >= cam_y
-                && h.pos.y < cam_y + VIEW_HEIGHT
-                && self.is_visible(h.pos)
-            {
-                ctx.set(
-                    h.pos.x - cam_x,
-                    h.pos.y - cam_y,
-                    self.palette.hazard,
-                    RGB::named(BLACK),
-                    to_cp437('!'),
-                );
-            }
-        }
-    }
 
     /// Saves a minimal game state to a RON-like file at `path`.
     pub fn save_game(&self, path: &str) -> GameResult<()> {
