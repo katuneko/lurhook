@@ -21,10 +21,10 @@ use ui_crate::{init as ui_init, ColorPalette, UIContext, UILayout};
 
 const VIEW_WIDTH: i32 = 60;
 const VIEW_HEIGHT: i32 = 17;
-const LINE_DAMAGE: i32 = 10;
+const LINE_DAMAGE: i32 = 15;
 const HAZARD_DAMAGE: i32 = 1;
 const HAZARD_DURATION: u8 = 3;
-const HAZARD_CHANCE: i32 = 5; // percent chance per turn
+const HAZARD_CHANCE: i32 = 8; // percent chance per turn
 const MAX_HUNGER: i32 = 100;
 const EAT_RAW_FISH: i32 = 20;
 const EAT_COOKED_FISH: i32 = 40;
