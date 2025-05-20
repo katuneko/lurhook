@@ -74,6 +74,7 @@ $ wasm-pack build --target web
 | 携行食使用 | g                           |
 | ログスクロール | PgUp/PgDn                   |
 | ヘルプ      | F1                          |
+| オプション  | O                           |
 | ラン終了    | Enter                       |
 | セーブ     | S                           |
 | 終了      | Q                           |

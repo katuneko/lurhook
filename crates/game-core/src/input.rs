@@ -24,6 +24,7 @@ pub struct InputConfig {
     pub scroll_up: VirtualKeyCode,
     pub scroll_down: VirtualKeyCode,
     pub help: VirtualKeyCode,
+    pub options: VirtualKeyCode,
     pub colorblind: bool,
 }
 
@@ -51,6 +52,7 @@ impl Default for InputConfig {
             scroll_up: PageUp,
             scroll_down: PageDown,
             help: F1,
+            options: O,
             colorblind: false,
         }
     }
@@ -102,6 +104,7 @@ impl InputConfig {
                     "scroll_up" => cfg.scroll_up = kc,
                     "scroll_down" => cfg.scroll_down = kc,
                     "help" => cfg.help = kc,
+                    "options" => cfg.options = kc,
                     _ => {}
                 }
             }
@@ -138,6 +141,7 @@ fn parse_key(name: &str) -> Option<VirtualKeyCode> {
         "pageup" => Some(PageUp),
         "pagedown" => Some(PageDown),
         "f1" => Some(F1),
+        "o" => Some(O),
         _ => None,
     }
 }
@@ -155,6 +159,7 @@ mod tests {
         assert_eq!(cfg.cook, VirtualKeyCode::F);
         assert_eq!(cfg.snack, VirtualKeyCode::G);
         assert_eq!(cfg.help, VirtualKeyCode::F1);
+        assert_eq!(cfg.options, VirtualKeyCode::O);
         assert!(!cfg.colorblind);
     }
 
@@ -196,5 +201,16 @@ mod tests {
         let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
         std::fs::remove_file(path).unwrap();
         assert_eq!(cfg.help, VirtualKeyCode::F1);
+    }
+
+    #[test]
+    fn options_key_parsed() {
+        let mut path = std::env::temp_dir();
+        path.push("test_options.toml");
+        let mut file = std::fs::File::create(&path).unwrap();
+        writeln!(file, "options = \"O\"").unwrap();
+        let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
+        std::fs::remove_file(path).unwrap();
+        assert_eq!(cfg.options, VirtualKeyCode::O);
     }
 }
