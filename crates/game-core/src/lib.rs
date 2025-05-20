@@ -61,6 +61,8 @@ pub struct LurhookGame {
     palette: ui::ColorPalette,
     storm_turns: u8,
     hazards: Vec<Hazard>,
+    cast_path: Option<Vec<common::Point>>,
+    cast_step: usize,
 }
 
 impl LurhookGame {
@@ -129,6 +131,8 @@ impl LurhookGame {
             palette,
             storm_turns: 0,
             hazards: Vec::new(),
+            cast_path: None,
+            cast_step: 0,
         };
         game.ui.set_layout(ui::UILayout::Help);
         Ok(game)
@@ -147,6 +151,36 @@ impl LurhookGame {
         x = x.clamp(0, self.map.width as i32 - VIEW_WIDTH);
         y = y.clamp(0, self.map.height as i32 - VIEW_HEIGHT);
         (x, y)
+    }
+
+    fn line_path(start: common::Point, end: common::Point) -> Vec<common::Point> {
+        let mut path = Vec::new();
+        let mut x = start.x;
+        let mut y = start.y;
+        let dx = (end.x - start.x).abs();
+        let dy = -(end.y - start.y).abs();
+        let sx = if start.x < end.x { 1 } else { -1 };
+        let sy = if start.y < end.y { 1 } else { -1 };
+        let mut err = dx + dy;
+        loop {
+            path.push(common::Point::new(x, y));
+            if x == end.x && y == end.y {
+                break;
+            }
+            let e2 = 2 * err;
+            if e2 >= dy {
+                err += dy;
+                x += sx;
+            }
+            if e2 <= dx {
+                err += dx;
+                y += sy;
+            }
+        }
+        if !path.is_empty() {
+            path.remove(0); // exclude starting tile
+        }
+        path
     }
 
     fn advance_time(&mut self) {
@@ -385,14 +419,25 @@ impl LurhookGame {
     }
 
     fn confirm_cast(&mut self) {
-        self.ui.add_log("Casting...").ok();
-        self.ui.set_layout(UILayout::Fishing);
-        self.mode = GameMode::Fishing { wait: 2 };
+        if let GameMode::Aiming { target } = self.mode {
+            self.ui.add_log("Casting...").ok();
+            self.cast_path = Some(Self::line_path(self.player.pos, target));
+            self.cast_step = 0;
+            self.ui.set_layout(UILayout::Fishing);
+            self.mode = GameMode::Fishing { wait: 2 };
+        }
     }
 
     fn update_fishing(&mut self) {
         if let GameMode::Fishing { ref mut wait } = self.mode {
             if *wait > 0 {
+                if let Some(path) = &self.cast_path {
+                    if self.cast_step < path.len() {
+                        self.cast_step += 1;
+                    } else {
+                        self.cast_path = None;
+                    }
+                }
                 *wait -= 1;
                 return;
             }
@@ -541,6 +586,27 @@ impl LurhookGame {
                     RGB::named(BLACK),
                     to_cp437('*'),
                 );
+            }
+        }
+        if let Some(path) = &self.cast_path {
+            for (i, pt) in path.iter().enumerate() {
+                if i >= self.cast_step {
+                    break;
+                }
+                if pt.x >= cam_x
+                    && pt.x < cam_x + VIEW_WIDTH
+                    && pt.y >= cam_y
+                    && pt.y < cam_y + VIEW_HEIGHT
+                {
+                    let glyph = if i == path.len() - 1 { 'o' } else { '*' };
+                    ctx.set(
+                        pt.x - cam_x,
+                        pt.y - cam_y,
+                        RGB::named(WHITE),
+                        RGB::named(BLACK),
+                        to_cp437(glyph),
+                    );
+                }
             }
         }
     }
@@ -1193,5 +1259,25 @@ mod tests {
         assert!(game.player.hp < hp);
         assert!(game.player.line < line);
         assert!(game.hazards.is_empty());
+    }
+
+    #[test]
+    fn line_path_returns_endpoints() {
+        let start = common::Point::new(0, 0);
+        let end = common::Point::new(3, 0);
+        let path = LurhookGame::line_path(start, end);
+        assert_eq!(path.first().unwrap(), &common::Point::new(1, 0));
+        assert_eq!(path.last().unwrap(), &end);
+    }
+
+    #[test]
+    fn confirm_cast_initializes_animation() {
+        let mut game = LurhookGame::default();
+        game.cast();
+        if let GameMode::Aiming { ref mut target } = game.mode {
+            target.x += 2;
+        }
+        game.confirm_cast();
+        assert!(game.cast_path.is_some());
     }
 }
