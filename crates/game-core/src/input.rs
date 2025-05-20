@@ -111,6 +111,40 @@ impl InputConfig {
         }
         Ok(cfg)
     }
+
+    /// Saves the configuration to `path`.
+    pub fn save(&self, path: &str) -> GameResult<()> {
+        use std::io::Write;
+        let mut file = std::fs::File::create(path)?;
+        macro_rules! write_key {
+            ($key:expr, $name:expr) => {
+                writeln!(file, "{} = \"{}\"", $name, key_name($key))?;
+            };
+        }
+        write_key!(self.left, "left");
+        write_key!(self.right, "right");
+        write_key!(self.up, "up");
+        write_key!(self.down, "down");
+        write_key!(self.up_left, "up_left");
+        write_key!(self.up_right, "up_right");
+        write_key!(self.down_left, "down_left");
+        write_key!(self.down_right, "down_right");
+        write_key!(self.cast, "cast");
+        write_key!(self.reel, "reel");
+        write_key!(self.inventory, "inventory");
+        write_key!(self.eat, "eat");
+        write_key!(self.cook, "cook");
+        write_key!(self.snack, "snack");
+        write_key!(self.save, "save");
+        write_key!(self.quit, "quit");
+        write_key!(self.end_run, "end_run");
+        write_key!(self.scroll_up, "scroll_up");
+        write_key!(self.scroll_down, "scroll_down");
+        write_key!(self.help, "help");
+        write_key!(self.options, "options");
+        writeln!(file, "colorblind = {}", self.colorblind)?;
+        Ok(())
+    }
 }
 
 fn parse_key(name: &str) -> Option<VirtualKeyCode> {
@@ -143,6 +177,39 @@ fn parse_key(name: &str) -> Option<VirtualKeyCode> {
         "f1" => Some(F1),
         "o" => Some(O),
         _ => None,
+    }
+}
+
+fn key_name(key: VirtualKeyCode) -> &'static str {
+    use VirtualKeyCode::*;
+    match key {
+        Left => "Left",
+        Right => "Right",
+        Up => "Up",
+        Down => "Down",
+        Y => "Y",
+        U => "U",
+        H => "H",
+        J => "J",
+        K => "K",
+        L => "L",
+        B => "B",
+        N => "N",
+        C => "C",
+        F => "F",
+        G => "G",
+        X => "X",
+        E => "E",
+        R => "R",
+        I => "I",
+        S => "S",
+        Q => "Q",
+        Return => "Return",
+        PageUp => "PageUp",
+        PageDown => "PageDown",
+        F1 => "F1",
+        O => "O",
+        other => panic!("unsupported key {:?}", other),
     }
 }
 
@@ -212,5 +279,17 @@ mod tests {
         let cfg = InputConfig::load(path.to_str().unwrap()).unwrap();
         std::fs::remove_file(path).unwrap();
         assert_eq!(cfg.options, VirtualKeyCode::O);
+    }
+
+    #[test]
+    fn save_round_trip() {
+        let cfg = InputConfig::default();
+        let mut path = std::env::temp_dir();
+        path.push("test_save_round_trip.toml");
+        cfg.save(path.to_str().unwrap()).unwrap();
+        let loaded = InputConfig::load(path.to_str().unwrap()).unwrap();
+        std::fs::remove_file(path).unwrap();
+        assert_eq!(loaded.left, cfg.left);
+        assert_eq!(loaded.colorblind, cfg.colorblind);
     }
 }

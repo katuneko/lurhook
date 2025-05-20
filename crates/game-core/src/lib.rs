@@ -268,6 +268,7 @@ impl LurhookGame {
         } else {
             ColorPalette::default()
         };
+        let _ = self.input.save(CONFIG_PATH);
     }
 
     /// Handles input and updates the player position accordingly.
@@ -1304,5 +1305,15 @@ mod tests {
         let mut ctx = dummy_ctx(game.input.options);
         game.handle_input(&mut ctx);
         assert_eq!(game.ui.layout(), UILayout::Options);
+    }
+
+    #[test]
+    fn toggle_colorblind_persists() {
+        let mut game = LurhookGame::default();
+        let _ = std::fs::remove_file(CONFIG_PATH);
+        game.toggle_colorblind();
+        let loaded = InputConfig::load(CONFIG_PATH).unwrap();
+        std::fs::remove_file(CONFIG_PATH).unwrap();
+        assert_eq!(loaded.colorblind, game.input.colorblind);
     }
 }
