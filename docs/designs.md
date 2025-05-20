@@ -177,6 +177,11 @@ Player Input → Update Systems → AI Move / Spawn → Resolve Collisions → R
 * タイトル画面で3段階の難易度を選択。
 * 難易度に応じて満腹度減少量とクラゲ出現率を倍率調整する。
 
+### 6.5 図鑑データ
+
+* `codex.json` をロードし、捕獲時に魚IDのカウントを+1保存する。
+* ゲーム起動時に自動読み込み、終了時や捕獲時に即保存する。
+
 ## 7. モジュール I/F 詳細
 
 | Producer | Consumer  | 関数 / Channel                   | 内容            |
