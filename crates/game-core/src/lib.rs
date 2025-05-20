@@ -67,6 +67,7 @@ pub struct LurhookGame {
     hazards: Vec<Hazard>,
     cast_path: Option<Vec<common::Point>>,
     cast_step: usize,
+    inventory_cursor: usize,
 }
 
 impl LurhookGame {
@@ -83,7 +84,7 @@ impl LurhookGame {
                 data::load_fish_types(path)?
             }
         };
-        let items = {
+        let mut items = {
             #[cfg(target_arch = "wasm32")]
             {
                 data::load_item_types_embedded()?
@@ -94,16 +95,21 @@ impl LurhookGame {
                 data::load_item_types(item_path)?
             }
         };
-        let rod = items.iter().find(|i| matches!(i.kind, data::ItemKind::Rod));
-        let reel = items
-            .iter()
-            .find(|i| matches!(i.kind, data::ItemKind::Reel));
-        let lure = items
-            .iter()
-            .find(|i| matches!(i.kind, data::ItemKind::Lure));
-        let bait_bonus = lure.map(|l| l.bite_bonus).unwrap_or(0.0);
-        let tension_bonus = rod.map(|r| r.tension_bonus).unwrap_or(0);
-        let reel_factor = reel.map(|r| r.reel_factor).unwrap_or(1.0);
+        let rod_pos = items.iter().position(|i| matches!(i.kind, data::ItemKind::Rod));
+        let reel_pos = items.iter().position(|i| matches!(i.kind, data::ItemKind::Reel));
+        let lure_pos = items.iter().position(|i| matches!(i.kind, data::ItemKind::Lure));
+        let rod = rod_pos.map(|p| items.remove(p));
+        // adjust indices if necessary
+        let reel = reel_pos.map(|p| items.remove(p - if rod_pos.map_or(false, |r| p > r) { 1 } else { 0 }));
+        let lure = lure_pos.map(|p| {
+            let mut idx = p;
+            if let Some(r) = rod_pos { if p > r { idx -= 1; } }
+            if let Some(r) = reel_pos { if p > r { idx -= 1; } }
+            items.remove(idx)
+        });
+        let bait_bonus = lure.as_ref().map(|l| l.bite_bonus).unwrap_or(0.0);
+        let tension_bonus = rod.as_ref().map(|r| r.tension_bonus).unwrap_or(0);
+        let reel_factor = reel.as_ref().map(|r| r.reel_factor).unwrap_or(1.0);
         let mut map = generate(seed)?;
         let fishes = spawn_fish_population(&mut map, &fish_types, 5)?;
         let input = InputConfig::load(CONFIG_PATH)?;
@@ -125,6 +131,10 @@ impl LurhookGame {
                 reel_factor,
                 canned_food: 0,
                 inventory: Vec::new(),
+                items,
+                rod,
+                reel,
+                lure,
             },
             map,
             fishes,
@@ -142,6 +152,7 @@ impl LurhookGame {
             hazards: Vec::new(),
             cast_path: None,
             cast_step: 0,
+            inventory_cursor: 0,
         };
         game.ui.set_layout(UILayout::Help);
         Ok(game)
@@ -190,6 +201,15 @@ impl LurhookGame {
             path.remove(0); // exclude starting tile
         }
         path
+    }
+
+    fn inventory_lines(&self) -> Vec<String> {
+        let mut lines: Vec<String> = self.player.items.iter().map(|i| i.name.clone()).collect();
+        lines.extend(self.player.inventory.iter().map(|f| f.name.clone()));
+        if lines.is_empty() {
+            lines.push("(empty)".to_string());
+        }
+        lines
     }
 
     /// Moves the player by the given delta, clamped to screen bounds.
@@ -281,14 +301,19 @@ impl LurhookGame {
                 ctx.quit();
                 return;
             }
-            if key == self.input.end_run && matches!(self.mode, GameMode::Exploring) {
-                self.end_run();
+            if key == self.input.end_run {
+                if self.ui.layout() == UILayout::Inventory {
+                    self.activate_selected_item();
+                } else if matches!(self.mode, GameMode::Exploring) {
+                    self.end_run();
+                }
                 return;
             }
             if key == self.input.inventory && matches!(self.mode, GameMode::Exploring) {
                 let next = if self.ui.layout() == UILayout::Inventory {
                     UILayout::Standard
                 } else {
+                    self.inventory_cursor = 0;
                     UILayout::Inventory
                 };
                 self.ui.set_layout(next);
@@ -318,15 +343,24 @@ impl LurhookGame {
                 _ => Point::new(0, 0),
             };
             if delta.x != 0 || delta.y != 0 {
-                match &mut self.mode {
-                    GameMode::Aiming { target } => {
-                        target.x = (target.x + delta.x).clamp(0, self.map.width as i32 - 1);
-                        target.y = (target.y + delta.y).clamp(0, self.map.height as i32 - 1);
+                if self.ui.layout() == UILayout::Inventory {
+                    let total = self.player.items.len() + self.player.inventory.len();
+                    if delta.y < 0 && self.inventory_cursor > 0 {
+                        self.inventory_cursor -= 1;
                     }
-                    _ if self.ui.layout() != UILayout::Inventory => {
-                        self.try_move(delta);
+                    if delta.y > 0 && self.inventory_cursor + 1 < total {
+                        self.inventory_cursor += 1;
                     }
-                    _ => {}
+                } else {
+                    match &mut self.mode {
+                        GameMode::Aiming { target } => {
+                            target.x = (target.x + delta.x).clamp(0, self.map.width as i32 - 1);
+                            target.y = (target.y + delta.y).clamp(0, self.map.height as i32 - 1);
+                        }
+                        _ => {
+                            self.try_move(delta);
+                        }
+                    }
                 }
             }
         }
@@ -471,6 +505,49 @@ impl LurhookGame {
         }
     }
 
+    fn activate_selected_item(&mut self) {
+        let idx = self.inventory_cursor;
+        if idx < self.player.items.len() {
+            let item = self.player.items.remove(idx);
+            use data::ItemKind::*;
+            match item.kind {
+                Rod => {
+                    if let Some(old) = self.player.rod.replace(item.clone()) {
+                        self.player.items.push(old);
+                    }
+                    self.player.tension_bonus = item.tension_bonus;
+                }
+                Reel => {
+                    if let Some(old) = self.player.reel.replace(item.clone()) {
+                        self.player.items.push(old);
+                    }
+                    self.player.reel_factor = item.reel_factor;
+                }
+                Lure => {
+                    if let Some(old) = self.player.lure.replace(item.clone()) {
+                        self.player.items.push(old);
+                    }
+                    self.player.bait_bonus = item.bite_bonus;
+                }
+                Food => {
+                    self.player.hunger = (self.player.hunger + EAT_CANNED_FOOD).min(MAX_HUNGER);
+                    self.ui.add_log("You ate food.").ok();
+                }
+            }
+        } else {
+            let fidx = idx - self.player.items.len();
+            if fidx < self.player.inventory.len() {
+                self.player.inventory.remove(fidx);
+                self.player.hunger = (self.player.hunger + EAT_RAW_FISH).min(MAX_HUNGER);
+                self.ui.add_log("You ate a raw fish.").ok();
+            }
+        }
+        let total = self.player.items.len() + self.player.inventory.len();
+        if self.inventory_cursor >= total && total > 0 {
+            self.inventory_cursor = total - 1;
+        }
+    }
+
     /// Saves a minimal game state to a RON-like file at `path`.
     pub fn save_game(&self, path: &str) -> GameResult<()> {
         let content = format!(
@@ -609,7 +686,8 @@ impl GameState for LurhookGame {
                 self.time_of_day,
             )
             .ok();
-        self.ui.draw_inventory(ctx, &self.player.inventory).ok();
+        let lines = self.inventory_lines();
+        self.ui.draw_inventory(ctx, &lines, self.inventory_cursor).ok();
     }
 }
 
@@ -1123,5 +1201,40 @@ mod tests {
         }
         game.confirm_cast();
         assert!(game.cast_path.is_some());
+    }
+
+    #[test]
+    fn inventory_cursor_moves() {
+        let mut game = LurhookGame::default();
+        game.player.items.push(data::ItemType {
+            id: "EXTRA".into(),
+            name: "Extra".into(),
+            kind: data::ItemKind::Food,
+            tension_bonus: 0,
+            reel_factor: 1.0,
+            bite_bonus: 0.0,
+        });
+        game.ui.set_layout(UILayout::Inventory);
+        let mut ctx = dummy_ctx(VirtualKeyCode::Down);
+        game.handle_input(&mut ctx);
+        assert_eq!(game.inventory_cursor, 1);
+    }
+
+    #[test]
+    fn activate_selected_item_equips_rod() {
+        let mut game = LurhookGame::default();
+        let rod = data::ItemType {
+            id: "R2".into(),
+            name: "Rod2".into(),
+            kind: data::ItemKind::Rod,
+            tension_bonus: 5,
+            reel_factor: 1.0,
+            bite_bonus: 0.0,
+        };
+        game.player.items.push(rod.clone());
+        game.inventory_cursor = game.player.items.len() - 1;
+        game.ui.set_layout(UILayout::Inventory);
+        game.activate_selected_item();
+        assert_eq!(game.player.tension_bonus, 5);
     }
 }
