@@ -136,7 +136,7 @@ impl UIContext {
         Ok(())
     }
 
-    /// Draws a status panel on the right side.
+    /// Draws a status panel on the far right side.
     pub fn draw_status(
         &self,
         ctx: &mut BTerm,
@@ -154,9 +154,9 @@ impl UIContext {
         } else {
             LOG_Y
         };
-        ctx.print(60, base_y, format!("HP: {}", hp));
-        ctx.print(60, base_y + 1, format!("Line: {}", line));
-        ctx.print(60, base_y + 2, format!("Depth: {}m", depth));
+        ctx.print(70, base_y, format!("HP: {}", hp));
+        ctx.print(70, base_y + 1, format!("Line: {}", line));
+        ctx.print(70, base_y + 2, format!("Depth: {}m", depth));
         let bar = hunger_bar_string(hunger, 100);
         use bracket_lib::prelude::*;
         let color = if hunger > 60 {
@@ -167,13 +167,13 @@ impl UIContext {
             RED
         };
         ctx.print_color(
-            60,
+            70,
             base_y + 3,
             color,
             RGB::named(BLACK),
             format!("Food: {}", bar),
         );
-        ctx.print(60, base_y + 4, format!("Time: {}", time));
+        ctx.print(70, base_y + 4, format!("Time: {}", time));
         Ok(())
     }
 
@@ -187,20 +187,21 @@ impl UIContext {
         Ok(())
     }
 
-    /// Draws the player's inventory when in `Inventory` layout.
+    /// Draws the player's inventory panel.
     pub fn draw_inventory(
         &self,
         ctx: &mut BTerm,
         lines: &[String],
         cursor: usize,
+        focused: bool,
     ) -> GameResult<()> {
-        if self.layout != UILayout::Inventory {
+        if matches!(self.layout, UILayout::Help | UILayout::Options) {
             return Ok(());
         }
-        ctx.print_centered(10, "Inventory");
+        ctx.print(60, 0, "Inventory");
         for (i, line) in lines.iter().enumerate() {
-            let prefix = if i == cursor { "> " } else { "  " };
-            ctx.print_centered(11 + i as i32, format!("{}{}", prefix, line));
+            let prefix = if focused && i == cursor { ">" } else { " " };
+            ctx.print(60, 1 + i as i32, format!("{}{}", prefix, line));
         }
         Ok(())
     }
@@ -266,7 +267,7 @@ fn help_strings() -> Vec<String> {
         "Arrow keys / hjkl: Move".to_string(),
         "c: Cast line".to_string(),
         "r: Reel".to_string(),
-        "i: Inventory".to_string(),
+        "i: Toggle Inventory".to_string(),
         "F1: Toggle this help".to_string(),
         "Esc/Q: Quit".to_string(),
     ]
